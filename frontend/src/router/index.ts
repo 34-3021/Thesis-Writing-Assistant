@@ -3,6 +3,7 @@ import {createRouter, createWebHistory} from "vue-router";
 import Login from '@/pages/Login.vue';
 import Index from "@/pages/Index.vue";
 import Test from "@/pages/Test.vue";
+import WritingAssistant from '@/pages/WritingAssistant.vue';  // 新增导入
 import CheckUserInfo from "@/components/CheckUserInfo.vue";
 import Profile from "@/components/Profile.vue";
 import AddUser from "@/components/AddUser.vue";
@@ -56,6 +57,11 @@ const routes =
             path: '/test',
             name: 'Test',
             component: Test
+        },
+        {
+            path: '/writing-assistant',  // 新增路由路径
+            name: 'WritingAssistant',
+            component: WritingAssistant
         }
     ];
 

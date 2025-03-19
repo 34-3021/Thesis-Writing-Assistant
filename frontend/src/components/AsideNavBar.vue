@@ -43,6 +43,14 @@ function change(key: string, keyPath: string[]) {
       </el-icon>
       <span>聊天</span>
     </el-menu-item>
+
+    <el-menu-item index="/writing-assistant"> <!-- 添加论文写作助手的路由 -->
+      <el-icon>
+        <Document />  <!-- 或者你选择的其它图标 -->
+      </el-icon>
+      <span>论文写作助手</span>
+    </el-menu-item>
+
   </el-menu>
 </template>
 

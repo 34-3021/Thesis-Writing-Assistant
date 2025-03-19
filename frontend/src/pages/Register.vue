@@ -4,9 +4,21 @@ import RegisterForm from "@/components/RegisterForm.vue";
 
 <template>
   <div class="container">
-    <div class="background">
-      <RegisterForm class="form-container"></RegisterForm>
-
+    <div class="overlay">
+      <!-- 标题区域，与 Login 保持一致 -->
+      <div class="login-header">
+        <div class="header-title">
+          <h1>海平AI 3.7</h1>
+          <img src="@/assets/images/trademark.jpg" alt="trademark" class="trademark-icon" />
+        </div>
+        <h2 class="sub-title">论文写作助手</h2>
+      </div>
+      <!-- 注册表单区域 -->
+      <div class="background">
+        <RegisterForm class="form-container"></RegisterForm>
+      </div>
+      <!-- 页脚居中小字 -->
+      <div class="footer-text">春——七宝中学</div>
     </div>
   </div>
 </template>
@@ -15,27 +27,76 @@ import RegisterForm from "@/components/RegisterForm.vue";
 * {
   box-sizing: border-box;
 }
-
 .container {
-  background-image: url('@/assets/images/background.jpeg');
-  background-size: cover; /* 让背景图片覆盖整个屏幕 */
-  background-position: center; /* 让背景图片居中显示 */
+  background-image: url('@/assets/images/new-background2.jpg');
+  background-size: cover;
+  background-position: center;
+  height: 100vh;
   display: flex;
-  justify-content: center; /* 水平居中 */
-  align-items: center; /* 垂直居中 */
-  height: 100vh; /* 确保容器铺满整个视口 */
+  justify-content: center;
+  align-items: center;
+  position: relative;
 }
+.overlay {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+/* 标题区域 */
+.login-header {
+  position: absolute;
+  top: 10%;
+  width: 100%;
+  text-align: center;
+  z-index: 2;
+}
+.header-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-title h1 {
+  font-size: 48px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #fdfdfd;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+  margin: 0 10px 0 0;
+}
+.trademark-icon {
+  height: 48px;
+}
+.sub-title {
+  font-size: 28px;
+  font-family: 'Georgia', serif;
+  color: #F5A9B8;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.6);
+  margin: 5px 0 20px;
+}
+/* 注册框背景：透明白色 */
 .background {
-
-  /* 设置背景颜色为白色，透明度为0.5 */
-  background-color: rgba(103, 186, 239, 0.9);
-  /* 其他样式，例如内边距、边框圆角等 */
+  background-color: rgba(255, 255, 255, 0.8);
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); /* 添加光影效果 */
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  position: absolute;
+  top: 60%; /* 往下移动一些，放置和字样贴合 */
+  left: 50%;
+  transform: translate(-50%, -60%);
+  width: 420px;
 }
 .form-container {
-  width: 400px; /* 设置表单容器宽度 */
-  /* 其他样式 */
+  width: 100%;
+}
+/* 页脚文本 */
+.footer-text {
+  position: absolute;
+  bottom: 8%;
+  width: 100%;
+  text-align: center;
+  font-size: 18px;
+  font-family: "楷体", "行楷", sans-serif;
+  font-weight: bold;
+  color: coral;
+  text-shadow: 1px 1px 4px rgba(0,0,0,0.5);
 }
 </style>
