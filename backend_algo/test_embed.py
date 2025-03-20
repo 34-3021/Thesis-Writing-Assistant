@@ -1,7 +1,7 @@
 import requests
 import numpy as np
 
-URL = "http://[HOST]:[PORT]/v1/embeddings"
+URL = "http://10.176.64.152:11435/v1/embeddings"
 MODEL = "bge-m3"
 
 sentences = [

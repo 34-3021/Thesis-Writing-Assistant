@@ -38,3 +38,17 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+# 新方法（用于创建论文，将论文信息存储到数据库中）
+def create_paper(db: Session, title: str, author: str, abstract: str, content: str, file_path: str):
+    paper = models.Paper(
+        title=title,
+        author=author,
+        abstract=abstract,
+        content=content,
+        file_path=file_path
+    )
+    db.add(paper)
+    db.commit()
+    db.refresh(paper)
+    return paper

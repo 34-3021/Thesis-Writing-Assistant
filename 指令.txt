@@ -1,0 +1,5 @@
+前端：npm run dev
+后端：uvicorn main:app --port 8000
+数据库：
+CREATE DATABASE test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; 创建
+SHOW DATABASES; 显示所有数据库

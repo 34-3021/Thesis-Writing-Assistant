@@ -1,10 +1,7 @@
 <script setup lang="ts">
-/*
-  该页面实现论文写作助手前端界面：  
-  … （原注释保持不变）
-*/
 import { ref } from 'vue'
 import { useUserstore } from '@/store/user'
+import { GenerateChapterApi } from '@/request/api'   // 已在 api.ts 中定义
 
 // 定义章节结构
 interface Chapter {
@@ -23,14 +20,45 @@ const mainTitle = ref('')
 // 动态章节列表，初始包含一个章节输入框
 const chapters = ref<Chapter[]>([{ title: '', instruction: '', content: '' }])
 
-// 限制章节数
 const maxChapters = 5
 
-function generateContent() {
+// 调用AI后端生成章节内容的函数（针对单个章节）
+async function generateChapterContent(chapterIndex: number) {
+  const chapter = chapters.value[chapterIndex]
+  if (!mainTitle.value || !chapter.title || !chapter.instruction) {
+    alert('请填写论文总标题、章节标题与内容说明')
+    return
+  }
+  try {
+    const res = await GenerateChapterApi({
+      main_title: mainTitle.value,
+      chapter_title: chapter.title,
+      chapter_instruction: chapter.instruction
+    })
+    // 将生成的内容更新到该章节的 content 字段
+    chapters.value[chapterIndex].content = res.response
+    alert(`章节${chapterIndex+1}内容生成成功！`)
+  } catch (error) {
+    console.error(error)
+    alert('生成功能异常，请重试')
+  }
+}
+
+// 旧的模拟生成函数，可保留供测试
+function generateContentSimulate() {
   chapters.value.forEach((chapter, index) => {
     chapter.content = `生成的内容 for Chapter ${index + 1} with title "${chapter.title}" and instructions "${chapter.instruction}".`
   })
   alert('内容生成完成！（模拟结果）')
+}
+
+function goBack() {
+  router.push({ name: 'Index' })
+}
+
+function removeChapter(index: number) {
+  // 删除对应章节
+  chapters.value.splice(index, 1)
 }
 
 function addChapter() {
@@ -59,7 +87,7 @@ function exportMarkdown() {
 
 <template>
   <div class="writing-assistant-wrapper">
-    <!-- 欢迎提示条 -->
+    <el-button type="primary" @click="goBack" style="margin-bottom:20px;">返回</el-button>
     <div class="welcome-bar">
       <strong>欢迎，{{ userDisplayName }}！</strong> 开始您的论文写作助手之旅吧！
     </div>
@@ -69,7 +97,6 @@ function exportMarkdown() {
         <el-input v-model="mainTitle" placeholder="请输入论文总标题"></el-input>
       </el-form-item>
       
-      <!-- 循环生成章节输入框 -->
       <div v-for="(chapter, index) in chapters" :key="index" class="chapter-box">
         <el-form-item :label="`章节 ${index + 1} 标题`">
           <el-input v-model="chapter.title" placeholder="请输入章节标题"></el-input>
@@ -77,22 +104,26 @@ function exportMarkdown() {
         <el-form-item :label="`章节 ${index + 1} 内容说明`">
           <el-input v-model="chapter.instruction" placeholder="请输入生成该章节内容的说明" type="textarea"></el-input>
         </el-form-item>
+        <!-- 生成按钮 -->
+        <el-button type="success" @click="generateChapterContent(index)">
+          生成该章节内容
+        </el-button>
+        <!-- 新增删除按钮 -->
+        <el-button type="danger" @click="removeChapter(index)" style="margin-left:10px;">
+          删除章节
+        </el-button>
       </div>
       
-      <!-- 添加章节按钮 -->
       <el-button type="primary" @click="addChapter" v-if="chapters.length < maxChapters">
         添加章节
       </el-button>
       
-      <!-- 生成内容按钮 -->
       <el-form-item class="btn-group">
-        <el-button type="success" @click="generateContent">
-          一键生成内容
-        </el-button>
+        <!-- 如需批量生成可调用此函数（目前仅供模拟），或逐个点击生成 -->
+        <!-- <el-button type="success" @click="generateContentSimulate">一键生成内容（模拟）</el-button> -->
       </el-form-item>
     </el-form>
     
-    <!-- 生成内容预览区 -->
     <div v-if="chapters.some(chapter => chapter.content)" class="preview-area">
       <h2>生成内容预览</h2>
       <div v-for="(chapter, index) in chapters" :key="'content-' + index" class="preview-chapter">
@@ -103,12 +134,12 @@ function exportMarkdown() {
         一键导出 Markdown 文件
       </el-button>
     </div>
-    <!-- 新增右下角放大的固定商标 -->
     <img src="@/assets/images/trademark.jpg" alt="trademark" class="floating-trademark" />
   </div>
 </template>
 
 <style scoped>
+/* 保持你原有样式 */
 .writing-assistant-wrapper {
   position: relative;
   padding: 20px;
@@ -157,12 +188,11 @@ function exportMarkdown() {
   display: block;
   margin: 20px auto;
 }
-/* 新增右下角浮动商标样式 */
 .floating-trademark {
   position: absolute;
   bottom: 20px;
   right: 20px;
-  height: 80px;  /* 稍大于其他页面 */
+  height: 80px;
   opacity: 0.9;
 }
 </style>

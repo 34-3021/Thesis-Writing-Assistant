@@ -83,3 +83,10 @@ export const GetUserInfoList = (params: { skip: number, limit: number }): Promis
 
 export const ChatWithLLM = (data: LLMRequest): Promise<LLMResponse> =>
     instance.post(`/api/chat`, data);
+
+export const GenerateChapterApi = (data: { 
+    main_title: string; 
+    chapter_title: string; 
+    chapter_instruction: string;
+}): Promise<LLMResponse> =>
+    instance.post('/api/generate-chapter', data);

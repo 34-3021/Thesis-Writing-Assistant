@@ -1,28 +1,22 @@
 from typing import List, Optional
-
 from pydantic import BaseModel
-
 
 class Message(BaseModel):
     role: str
     content: str
 
-
 class Conversation(BaseModel):
     messages: List[Message]
-
 
 class ConversationResponseUsage(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     total_tokens: int
 
-
 class ConversationResponseChoice(BaseModel):
     index: int
     message: Message
     finish_reason: Optional[str]
-
 
 class ConversationResponse(BaseModel):
     id: str
@@ -32,3 +26,14 @@ class ConversationResponse(BaseModel):
     system_fingerprint: str
     choices: List[ConversationResponseChoice]
     usage: ConversationResponseUsage
+
+# 生成章节请求数据（新增可选字段 prompt）
+class GenerateChapterRequest(BaseModel):
+    main_title: str          # 论文总标题
+    chapter_title: str       # 章节标题
+    chapter_instruction: str # 当前章节的生成要求
+    prompt: Optional[str] = None
+
+# 生成章节响应模型
+class ChatResponse(BaseModel):
+    response: str
