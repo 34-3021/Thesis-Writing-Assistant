@@ -2,7 +2,9 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserstore } from '@/store/user'
-import { GenerateChapterApi } from '@/request/api'   // 已在 api.ts 中定义
+import { GenerateChapterApi } from '@/request/api'
+// 导入工具函数
+import { generateWordDocument, generateMarkdownDocument } from '@/utils/document-formatter'
 
 // 定义章节结构
 interface Chapter {
@@ -46,14 +48,6 @@ async function generateChapterContent(chapterIndex: number) {
   }
 }
 
-// 旧的模拟生成函数，可保留供测试
-function generateContentSimulate() {
-  chapters.value.forEach((chapter, index) => {
-    chapter.content = `生成的内容 for Chapter ${index + 1} with title "${chapter.title}" and instructions "${chapter.instruction}".`
-  })
-  alert('内容生成完成！（模拟结果）')
-}
-
 function goBack() {
   router.push({ name: 'Index' })
 }
@@ -71,19 +65,32 @@ function addChapter() {
   }
 }
 
+// 导出Markdown文件
 function exportMarkdown() {
-  let markdownText = `# ${mainTitle.value}\n\n`
-  chapters.value.forEach((chapter, index) => {
-    markdownText += `## ${chapter.title}\n\n`
-    markdownText += `${chapter.content}\n\n`
-  })
-  const blob = new Blob([markdownText], { type: 'text/markdown;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = '论文写作助手生成内容.md'
-  a.click()
-  URL.revokeObjectURL(url)
+  generateMarkdownDocument(
+    mainTitle.value, 
+    chapters.value.map(chapter => ({ 
+      title: chapter.title, 
+      content: chapter.content 
+    }))
+  )
+}
+
+// 导出Word文档
+async function exportWord() {
+  try {
+    await generateWordDocument(
+      mainTitle.value, 
+      chapters.value.map(chapter => ({ 
+        title: chapter.title, 
+        content: chapter.content 
+      }))
+    )
+    alert('Word 文档导出成功！')
+  } catch (error) {
+    console.error('导出Word文档失败', error)
+    alert('导出Word文档失败')
+  }
 }
 </script>
 
@@ -132,11 +139,20 @@ function exportMarkdown() {
         <h3>章节 {{ index + 1 }}: {{ chapter.title }}</h3>
         <el-input type="textarea" v-model="chapter.content" :rows="6"></el-input>
       </div>
-      <el-button type="warning" @click="exportMarkdown" class="export-btn">
-        一键导出 Markdown 文件
-      </el-button>
+      
+      <!-- 添加导出按钮组 -->
+      <div class="export-buttons">
+        <el-button type="warning" @click="exportMarkdown" class="export-btn">
+          导出 Markdown 文件
+        </el-button>
+        <el-button type="primary" @click="exportWord" class="export-btn">
+          导出 Word 文档
+        </el-button>
+      </div>
     </div>
-    <img src="@/assets/images/trademark.jpg" alt="trademark" class="floating-trademark" />
+    <div class="trademark-container">
+      <img src="@/assets/images/trademark.jpg" alt="trademark" class="floating-trademark" />
+    </div>
   </div>
 </template>
 
@@ -186,14 +202,24 @@ function exportMarkdown() {
 .btn-group {
   margin-top: 20px;
 }
-.export-btn {
-  display: block;
+/* 添加导出按钮组样式 */
+.export-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
   margin: 20px auto;
 }
+.export-btn {
+  font-weight: 500;
+}
+/* 修改后 */
+.trademark-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 30px;
+}
+
 .floating-trademark {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
   height: 80px;
   opacity: 0.9;
 }

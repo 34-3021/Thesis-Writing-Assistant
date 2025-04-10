@@ -17,19 +17,30 @@ const ruleForm = reactive({
   password: ''
 })
 
-// 新增记住我复选框状态（1小时内免密登录）
+// 免密登录复选框状态
 const remember = ref(false)
 
-// onMounted 钩子：检查 localStorage 是否有保存的登录信息，若在1小时内则自动填充
+// onMounted 钩子：检查 localStorage 是否有保存的登录信息
 onMounted(() => {
   const stored = localStorage.getItem('loginInfo')
   if(stored) {
     const info = JSON.parse(stored)
     const now = new Date().getTime()
-    if(now - info.timestamp < 3600000) { // 3600000毫秒 = 1小时
-      ruleForm.userName = info.userName
-      ruleForm.password = info.password
+    
+    // 填充用户名 - 无论是否过期都会填充，提升用户体验
+    ruleForm.userName = info.userName
+    
+    // 验证是否在有效期内（1小时）以及是否手动登出
+    if(now - info.timestamp < 3600000 && !info.manualLogout) {
       remember.value = true
+      
+      // 如果有token且未过期且未手动登出，可以直接使用token自动登录
+      if (info.token) {
+        userStore.token = info.token
+        userStore.userName = info.userName
+        // 自动跳转到主页
+        router.push({ name: 'IndexMain' })
+      }
     }
   }
 })
@@ -64,17 +75,17 @@ const submitForm = (formEl: FormInstance | undefined) => {
           username: ruleForm.userName,
           password: ruleForm.password
         })
-        ElMessage.success('登陆成功')
+        ElMessage.success('登录成功')
         userStore.token = res.access_token
         userStore.userName = ruleForm.userName
 
-        // 如勾选“1小时免密登录”，保存登录信息到 localStorage（注意：生产环境请不要保存明文密码）
-        // 在LoginForm.vue的submitForm函数中，修改记住登录信息的部分
+        // 如勾选"1小时免密登录"，保存信息到localStorage
         if(remember.value) {
           const info = {
-          userName: ruleForm.userName,
-          token: res.access_token, // 存储token而非密码
-          timestamp: new Date().getTime()
+            userName: ruleForm.userName,
+            token: res.access_token,
+            timestamp: new Date().getTime(),
+            manualLogout: false  // 初始未手动登出
           }
           localStorage.setItem('loginInfo', JSON.stringify(info))
         } else {
@@ -84,10 +95,10 @@ const submitForm = (formEl: FormInstance | undefined) => {
         await router.push({ name: 'IndexMain', params: { userName: ruleForm.userName } })
       } catch (e) {
         console.log(e)
-        ElMessage.error('登陆失败，请重新输入用户名和密码')
+        ElMessage.error('登录失败，请重新输入用户名和密码')
       }
     } else {
-      ElMessage.error('登陆失败，未输入用户名和密码')
+      ElMessage.error('登录失败，未输入用户名和密码')
       return false
     }
   })
@@ -113,11 +124,9 @@ function jumpToRegister() {
     <el-form-item label="密码" prop="password">
       <el-input v-model="ruleForm.password" type="password" autocomplete="off"/>
     </el-form-item>
-    <!-- 新增1小时免密登录复选框 -->
     <el-form-item>
       <el-checkbox v-model="remember">1小时免密登录</el-checkbox>
     </el-form-item>
-    <!-- 按钮区域，采用 flex 居中对称排列 -->
     <el-form-item class="button-group">
       <el-button type="primary" @click="submitForm(ruleFormRef)">登录</el-button>
       <el-button type="success" @click="jumpToRegister()">注册</el-button>
@@ -126,17 +135,12 @@ function jumpToRegister() {
 </template>
 
 <style scoped>
-/* 新增按钮区域样式 */
 .button-group {
   display: flex;
   width: 100%;
   justify-content: center;
   align-items: center;
 }
-/* 使用 ::v-deep 覆盖 .el-form-item__content 的 margin-left */
-/* 根本原因：Element Plus 内部自动给按钮区域生成的容器
-（.el-form-item__content）设置了 margin-left: auto，
-从而将按钮推向右侧，要解决这个问题，需要覆盖这个自动样式 */
 ::v-deep(.button-group .el-form-item__content) {
   margin-left: 0 !important;
   display: flex;

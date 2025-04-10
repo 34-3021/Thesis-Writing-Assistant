@@ -1,4 +1,9 @@
+# 添加必要的导入
 import os
+import shutil
+from fastapi import File, UploadFile
+import threading
+from datetime import datetime  # 确保已导入
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -221,3 +226,88 @@ async def generate_chapter_endpoint(
     if resp.status_code != 200:
         raise HTTPException(status_code=resp.status_code, detail="算法层错误")
     return resp.json()
+
+# 确保上传目录存在
+UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "test_papers")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@app.post("/papers/upload", response_model=schemas.Paper)
+async def upload_paper(
+    file: UploadFile,
+    current_user: Annotated[schemas.User, Depends(get_current_active_user)],
+    db: SessionDep
+):
+    """上传论文文件并导入到数据库"""
+    if not file.filename.endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="只支持上传PDF文件")
+    
+    # 生成唯一文件名避免冲突
+    filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    
+    # 保存上传的文件
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    try:
+        # 提取PDF文本内容
+        from pdf_parser import extract_pdf_text
+        content = extract_pdf_text(file_path)
+        
+        # 从文件名中提取标题(去掉扩展名)
+        title = os.path.splitext(file.filename)[0]
+        
+        # 简单推断作者(使用上传用户的姓名)
+        author = f"{current_user.first_name} {current_user.last_name}"
+        
+        # 简单提取摘要(取内容前500个字符)
+        abstract = content[:500] if content else ""
+        
+        # 创建论文记录
+        paper = crud.create_paper(
+            db, 
+            title=title,
+            author=author, 
+            abstract=abstract,
+            content=content, 
+            file_path=file_path
+        )
+        
+        # 启动向量化处理（异步），避免阻塞响应
+        def vectorize_paper():
+            try:
+                # 导入向量数据库操作模块
+                from backend_algo.vectorizer import embed_text
+                from backend_algo.retrieval import get_or_create_collection
+                
+                # 获取向量数据库集合
+                collection = get_or_create_collection()
+                
+                # 将论文内容向量化并存入向量数据库
+                paper_text = f"标题: {paper.title}\n摘要: {paper.abstract}\n内容: {paper.content}"
+                
+                # 添加到向量数据库
+                collection.add(
+                    ids=[str(paper.id)],
+                    documents=[paper_text],
+                    metadatas=[{
+                        "title": paper.title,
+                        "author": paper.author,
+                        "paper_id": paper.id
+                    }]
+                )
+                print(f"成功向量化论文 ID: {paper.id}, 标题: {paper.title}")
+            except Exception as e:
+                print(f"向量化论文失败: {str(e)}")
+        
+        # 使用线程异步处理向量化
+        thread = threading.Thread(target=vectorize_paper)
+        thread.daemon = True
+        thread.start()
+        
+        return paper
+        
+    except Exception as e:
+        # 处理失败，清理上传的文件
+        os.remove(file_path)
+        raise HTTPException(status_code=500, detail=f"处理论文失败: {str(e)}")

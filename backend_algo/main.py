@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 import schemas
 import requests
 
+from pydantic import BaseModel
 from backend_algo.schemas import GenerateChapterRequest, ChatResponse
 
 app = FastAPI()
@@ -66,3 +67,49 @@ async def generate_chapter(request: GenerateChapterRequest):
         raise HTTPException(status_code=resp.status_code, detail="AI 模型接口错误")
     data = resp.json()
     return schemas.ChatResponse(response=data["choices"][0]["message"]["content"])
+
+# 添加新的请求模型
+class PaperVectorizeRequest(BaseModel):
+    paper_id: int
+    title: str
+    author: str
+    abstract: str
+    content: str
+
+@app.post("/vectorize-paper")
+async def vectorize_paper(request: PaperVectorizeRequest):
+    """接收论文信息并进行向量化处理"""
+    try:
+        # 导入向量数据库操作模块
+        from vectorizer import embed_text
+        from retrieval import get_or_create_collection
+        
+        # 获取向量数据库集合
+        collection = get_or_create_collection()
+        
+        # 将论文内容向量化并存入向量数据库
+        paper_text = f"标题: {request.title}\n摘要: {request.abstract}\n内容: {request.content}"
+        
+        # 检查ID是否已存在
+        try:
+            existing = collection.get(ids=[str(request.paper_id)])
+            if existing['ids']:
+                # 更新现有记录
+                collection.delete(ids=[str(request.paper_id)])
+        except Exception:
+            pass  # ID不存在则继续添加
+            
+        # 添加到向量数据库
+        collection.add(
+            ids=[str(request.paper_id)],
+            documents=[paper_text],
+            metadatas=[{
+                "title": request.title,
+                "author": request.author,
+                "paper_id": request.paper_id
+            }]
+        )
+        
+        return {"status": "success", "message": f"论文ID {request.paper_id} 向量化成功"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
