@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserstore } from '@/store/user'
 import { GenerateChapterApi } from '@/request/api'   // 已在 api.ts 中定义
 
@@ -13,6 +14,7 @@ interface Chapter {
 // 从用户store中获取用户名
 const userStore = useUserstore()
 const userDisplayName = ref(userStore.userName)
+const router = useRouter()
 
 // 论文总标题
 const mainTitle = ref('')

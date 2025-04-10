@@ -1,5 +1,14 @@
 前端：npm run dev
 后端：uvicorn main:app --port 8000
+后端算法：uvicorn main:app --port 8001
 数据库：
-CREATE DATABASE test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; 创建
-SHOW DATABASES; 显示所有数据库
+chroma run --path ./data_vector_db --host localhost --port 8002
+
+导入论文：python backend/insert_test_paper.py
+向量化论文：python backend_algo/vector_import.py
+
+按照以下顺序启动：
+   - 先启动向量数据库Chroma，因后续向量化和检索依赖它
+   - 再启动后端算法层，因为生成章节、向量检索等接口需要运行
+   - 接着启动后端业务层，提供论文管理接口等
+   - 最后启动前端

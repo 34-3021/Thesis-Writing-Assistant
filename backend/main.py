@@ -4,6 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
+from typing import List, Annotated  # 确保List被导入
 
 import jwt
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -148,6 +149,32 @@ async def chat(current_user: Annotated[schemas.User, Depends(get_current_active_
         'messages': [{'role': 'user', 'content': chat_request.prompt}]
     })
     return schemas.ChatResponse(response=resp.json()['choices'][0]['message']['content'])
+
+@app.get("/papers/", response_model=List[schemas.Paper])
+async def get_papers(
+    current_user: Annotated[schemas.User, Depends(get_current_active_user)],
+    db: SessionDep,
+    skip: int = 0,
+    limit: int = 100,
+):
+    """获取论文列表"""
+    papers = db.query(models.Paper).offset(skip).limit(limit).all()
+    return papers
+
+@app.delete("/papers/{paper_id}", response_model=schemas.Paper)
+async def delete_paper(
+    paper_id: int,
+    current_user: Annotated[schemas.User, Depends(get_current_active_user)],
+    db: SessionDep
+):
+    """删除指定ID的论文"""
+    paper = db.query(models.Paper).filter(models.Paper.id == paper_id).first()
+    if paper is None:
+        raise HTTPException(status_code=404, detail="论文未找到")
+    
+    db.delete(paper)
+    db.commit()
+    return paper
 
 # 修改后的生成章节接口：在业务层中整合数据库中的论文，并附加向量化后的信息
 @app.post("/generate-chapter", response_model=ChatResponse)

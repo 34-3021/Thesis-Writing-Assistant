@@ -58,6 +58,15 @@ interface LLMResponse {
     response: string
 }
 
+// 添加Paper接口
+interface Paper {
+    id: number
+    title: string
+    author: string
+    abstract: string
+    file_path: string
+  }
+
 //测试hello api
 export const TestHello = (): Res<null> =>
     instance.get('/api/hello');
@@ -90,3 +99,10 @@ export const GenerateChapterApi = (data: {
     chapter_instruction: string;
 }): Promise<LLMResponse> =>
     instance.post('/api/generate-chapter', data);
+
+// 添加API函数
+export const GetPapersList = (params: { skip: number, limit: number }): Promise<Paper[]> =>
+    instance.get('/api/papers/', { params });
+  
+  export const DeletePaper = (paperId: number): Promise<Paper> =>
+    instance.delete(`/api/papers/${paperId}`);

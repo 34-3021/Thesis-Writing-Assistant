@@ -7,7 +7,7 @@ import models
 
 def insert_test_paper():
     # 设置测试论文文件的路径
-    file_path = "backend/test_papers/测试1.pdf"
+    file_path = "backend/test_papers/test1.pdf"
     # 使用 pdf_parser 提取论文文本
     content = pdf_parser.extract_pdf_text(file_path)
     

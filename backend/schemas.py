@@ -33,3 +33,13 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+
+class Paper(BaseModel):
+    id: int
+    title: str
+    author: str = ""
+    abstract: str = ""
+    file_path: str = ""
+
+    class Config:
+        from_attributes = True

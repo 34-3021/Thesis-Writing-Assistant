@@ -69,11 +69,12 @@ const submitForm = (formEl: FormInstance | undefined) => {
         userStore.userName = ruleForm.userName
 
         // 如勾选“1小时免密登录”，保存登录信息到 localStorage（注意：生产环境请不要保存明文密码）
+        // 在LoginForm.vue的submitForm函数中，修改记住登录信息的部分
         if(remember.value) {
           const info = {
-            userName: ruleForm.userName,
-            password: ruleForm.password,
-            timestamp: new Date().getTime()
+          userName: ruleForm.userName,
+          token: res.access_token, // 存储token而非密码
+          timestamp: new Date().getTime()
           }
           localStorage.setItem('loginInfo', JSON.stringify(info))
         } else {

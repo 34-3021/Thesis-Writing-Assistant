@@ -1,6 +1,7 @@
 from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text, DateTime
-from sqlalchemy.sql import func  # 便于获取当前时间
-from database import Base
+from sqlalchemy.sql import func
+# 将相对导入改为绝对导入
+from backend.database import Base
 
 class User(Base):
     __tablename__ = "users"

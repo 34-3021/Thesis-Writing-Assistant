@@ -5,7 +5,7 @@ import chromadb
 import chromadb.utils.embedding_functions as embedding_functions
 
 # 向量化函数，复用你在 vectorizer.py 中的实现
-from .vectorizer import embed_text
+from backend_algo.vectorizer import embed_text
 
 # 调用向量数据库API（依据 PPT 示例进行配置）
 # 注意修改 API base 和相关参数为实际值

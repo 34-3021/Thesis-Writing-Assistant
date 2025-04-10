@@ -9,6 +9,7 @@ import Profile from "@/components/Profile.vue";
 import AddUser from "@/components/AddUser.vue";
 import Chat from "@/components/Chat.vue";
 import Register from "@/pages/Register.vue";
+import PaperLibrary from '@/pages/PaperLibrary.vue';
 
 const routes =
     [
@@ -49,6 +50,11 @@ const routes =
                 {
                     path: 'chat',
                     component: Chat,
+                },
+                {
+                    path: 'paper-library',
+                    name: 'PaperLibrary',
+                    component: PaperLibrary,
                 },
             ]
 

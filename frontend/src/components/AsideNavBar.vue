@@ -51,6 +51,13 @@ function change(key: string, keyPath: string[]) {
       <span>论文写作助手</span>
     </el-menu-item>
 
+    <el-menu-item index="/index/paper-library">
+      <el-icon>
+        <Document />
+      </el-icon>
+      <span>论文库</span>
+    </el-menu-item>
+
   </el-menu>
 </template>
 
