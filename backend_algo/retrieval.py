@@ -23,7 +23,6 @@ embedding_function = embedding_functions.OpenAIEmbeddingFunction(
 client = chromadb.HttpClient(host='localhost', port=8002)
 
 # 如果不存在，则新建 collection，否则获取集合
-# 这里集合名称假定为 "paper_collection"
 def get_or_create_collection():
     try:
         collection = client.get_collection(name="paper_collection", embedding_function=embedding_function)

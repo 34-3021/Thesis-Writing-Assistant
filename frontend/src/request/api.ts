@@ -100,7 +100,6 @@ export const GenerateChapterApi = (data: {
 }): Promise<LLMResponse> =>
     instance.post('/api/generate-chapter', data);
 
-// 添加API函数
 export const GetPapersList = (params: { skip: number, limit: number }): Promise<Paper[]> =>
     instance.get('/api/papers/', { params });
   

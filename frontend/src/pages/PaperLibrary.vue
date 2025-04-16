@@ -84,7 +84,7 @@ async function handleFileChange(event: Event) {
 // 删除论文
 async function handleDelete(paperId: number) {
   try {
-    await ElMessageBox.confirm('确定要删除这篇论文吗？此操作不可逆', '提示', {
+    await ElMessageBox.confirm('确定要删除这篇论文吗？此操作不可撤销哦！', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'

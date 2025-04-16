@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'  // 添加watch和onMounted
+// watch用于监听数据变化，onMounted用于组件挂载后执行代码（钩子中加载数据）
 import { useRouter } from 'vue-router'
 import { useUserstore } from '@/store/user'
 import { GenerateChapterApi } from '@/request/api'
@@ -92,13 +93,67 @@ async function exportWord() {
     alert('导出Word文档失败')
   }
 }
+
+// 新增: 保存当前内容到 localStorage
+function saveToLocalStorage() {
+  const data = {
+    mainTitle: mainTitle.value,
+    chapters: chapters.value,
+    lastUpdated: new Date().toISOString()
+  }
+  localStorage.setItem('writingAssistantData', JSON.stringify(data))
+}
+
+// 新增: 从 localStorage 加载内容
+function loadFromLocalStorage() {
+  const savedData = localStorage.getItem('writingAssistantData')
+  if (savedData) {
+    try {
+      const data = JSON.parse(savedData)
+      mainTitle.value = data.mainTitle || ''
+      chapters.value = data.chapters || [{ title: '', instruction: '', content: '' }]
+    } catch (e) {
+      console.error('Failed to load saved data', e)
+    }
+  }
+}
+
+// 新增: 清空保存的内容
+function clearAll() {
+  // 显示确认对话框
+  if (confirm('确定要清空所有内容吗？此操作不可撤销哦！')) {
+    localStorage.removeItem('writingAssistantData')
+    mainTitle.value = ''
+    chapters.value = [{ title: '', instruction: '', content: '' }]
+  }
+}
+
+// 组件挂载时加载保存的内容
+onMounted(() => {
+  loadFromLocalStorage()
+})
+
+// 监听数据变化，自动保存
+watch(
+  [mainTitle, chapters], 
+  () => {
+    saveToLocalStorage()
+  },
+  { deep: true } // 深度监听对象内部变化
+)
+// script表示Vue组件的逻辑部分，可以在其中写入JavaScript代码，如变量、函数等
 </script>
 
 <template>
   <div class="writing-assistant-wrapper">
-    <el-button type="primary" @click="goBack" style="margin-bottom:20px;">返回</el-button>
+    <div class="header-actions">
+      <el-button type="primary" @click="goBack">返回</el-button>
+      <!-- 清空按钮 -->
+      <el-button type="danger" @click="clearAll">一键清空</el-button>
+    </div>
     <div class="welcome-bar">
-      <strong>欢迎，{{ userDisplayName }}！</strong> 开始您的论文写作助手之旅吧！
+      <strong>欢迎，{{ userDisplayName }}！</strong> 开始您的论文写作助手之旅吧！<br/>
+      <p>当前写作助手支持<strong style="color: #DAA520;">写作记录保存</strong>，如要删除，可点击右上角的一键清空～</p>
     </div>
     
     <el-form label-position="top" class="writing-assistant-form">
@@ -157,7 +212,11 @@ async function exportWord() {
 </template>
 
 <style scoped>
-/* 保持你原有样式 */
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
 .writing-assistant-wrapper {
   position: relative;
   padding: 20px;

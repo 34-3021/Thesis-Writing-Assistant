@@ -36,7 +36,7 @@ async function logout() {
   <div style="display: flex; justify-content: space-between; align-items: center;">
     <img src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="Logo" style="height: 50px;">
     <div>
-      <el-button type="info" @click="logout">登出</el-button>
+      <el-button type="info" @click="logout">登出（下次需重新登录）</el-button>
     </div>
   </div>
 </template>
