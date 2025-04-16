@@ -30,15 +30,19 @@ const maxChapters = 5
 // 调用AI后端生成章节内容的函数（针对单个章节）
 async function generateChapterContent(chapterIndex: number) {
   const chapter = chapters.value[chapterIndex]
-  if (!mainTitle.value || !chapter.title || !chapter.instruction) {
-    alert('请填写论文总标题、章节标题与内容说明')
+  if (!mainTitle.value) {
+    alert('请填写论文总标题！')
+    return
+  }
+  if (!chapter.title) {
+    alert('请填写章节标题！')
     return
   }
   try {
     const res = await GenerateChapterApi({
       main_title: mainTitle.value,
       chapter_title: chapter.title,
-      chapter_instruction: chapter.instruction
+      chapter_instruction: chapter.instruction || '' // 如果没有填写说明，传空字符串
     })
     // 将生成的内容更新到该章节的 content 字段
     chapters.value[chapterIndex].content = res.response
@@ -47,6 +51,14 @@ async function generateChapterContent(chapterIndex: number) {
     console.error(error)
     alert('生成功能异常，请重试')
   }
+}
+
+// 重新生成章节内容的函数
+async function regenerateChapterContent(chapterIndex: number) {
+  // 清空当前章节内容
+  chapters.value[chapterIndex].content = ''
+  // 重新生成
+  await generateChapterContent(chapterIndex)
 }
 
 function goBack() {
@@ -147,64 +159,109 @@ watch(
 <template>
   <div class="writing-assistant-wrapper">
     <div class="header-actions">
-      <el-button type="primary" @click="goBack">返回</el-button>
-      <!-- 清空按钮 -->
-      <el-button type="danger" @click="clearAll">一键清空</el-button>
-    </div>
-    <div class="welcome-bar">
-      <strong>欢迎，{{ userDisplayName }}！</strong> 开始您的论文写作助手之旅吧！<br/>
-      <p>当前写作助手支持<strong style="color: #DAA520;">写作记录保存</strong>，如要删除，可点击右上角的一键清空～</p>
-    </div>
-    
-    <el-form label-position="top" class="writing-assistant-form">
-      <el-form-item label="论文总标题">
-        <el-input v-model="mainTitle" placeholder="请输入论文总标题"></el-input>
-      </el-form-item>
-      
-      <div v-for="(chapter, index) in chapters" :key="index" class="chapter-box">
-        <el-form-item :label="`章节 ${index + 1} 标题`">
-          <el-input v-model="chapter.title" placeholder="请输入章节标题"></el-input>
-        </el-form-item>
-        <el-form-item :label="`章节 ${index + 1} 内容说明`">
-          <el-input v-model="chapter.instruction" placeholder="请输入生成该章节内容的说明" type="textarea"></el-input>
-        </el-form-item>
-        <!-- 生成按钮 -->
-        <el-button type="success" @click="generateChapterContent(index)">
-          生成该章节内容
-        </el-button>
-        <!-- 新增删除按钮 -->
-        <el-button type="danger" @click="removeChapter(index)" style="margin-left:10px;">
-          删除章节
-        </el-button>
-      </div>
-      
-      <el-button type="primary" @click="addChapter" v-if="chapters.length < maxChapters">
-        添加章节
+      <el-button type="primary" @click="goBack" size="large">
+        <el-icon><Back /></el-icon> &nbsp;返回
       </el-button>
-      
-      <el-form-item class="btn-group">
-        <!-- 如需批量生成可调用此函数（目前仅供模拟），或逐个点击生成 -->
-        <!-- <el-button type="success" @click="generateContentSimulate">一键生成内容（模拟）</el-button> -->
-      </el-form-item>
-    </el-form>
-    
-    <div v-if="chapters.some(chapter => chapter.content)" class="preview-area">
-      <h2>生成内容预览</h2>
-      <div v-for="(chapter, index) in chapters" :key="'content-' + index" class="preview-chapter">
-        <h3>章节 {{ index + 1 }}: {{ chapter.title }}</h3>
-        <el-input type="textarea" v-model="chapter.content" :rows="6"></el-input>
-      </div>
-      
-      <!-- 添加导出按钮组 -->
-      <div class="export-buttons">
-        <el-button type="warning" @click="exportMarkdown" class="export-btn">
-          导出 Markdown 文件
-        </el-button>
-        <el-button type="primary" @click="exportWord" class="export-btn">
-          导出 Word 文档
-        </el-button>
-      </div>
+      <el-button type="danger" @click="clearAll" size="large">
+        <el-icon><Delete /></el-icon> &nbsp;一键清空
+      </el-button>
     </div>
+    
+    <el-card class="welcome-card">
+      <template #header>
+        <div class="welcome-header">
+          <span>欢迎，{{ userDisplayName }}！开始您的论文写作助手之旅吧！</span>
+        </div>
+      </template>
+      <p>当前写作助手支持<strong class="highlight-text">写作记录自动保存</strong>，如要删除已有内容，可点击右上角的一键清空～</p>
+    </el-card>
+    
+    <el-card class="content-card">
+      <template #header>
+        <div class="card-header">
+          <span>论文内容编辑</span>
+        </div>
+      </template>
+      
+      <el-form label-position="top" class="writing-assistant-form">
+        <el-form-item label="论文总标题">
+          <el-input v-model="mainTitle" placeholder="请输入论文总标题" size="large"></el-input>
+        </el-form-item>
+        
+        <div v-for="(chapter, index) in chapters" :key="index" class="chapter-box">
+          <div class="chapter-header">
+            <span class="chapter-number">章节 {{ index + 1 }}</span>
+          </div>
+          
+          <el-form-item label="章节标题">
+            <el-input v-model="chapter.title" placeholder="请输入章节标题"></el-input>
+          </el-form-item>
+          
+          <el-form-item label="章节内容说明（可选）">
+            <el-input v-model="chapter.instruction" placeholder="请输入生成该章节内容的具体要求或说明" type="textarea" :rows="3"></el-input>
+          </el-form-item>
+          
+          <div class="chapter-actions">
+            <el-button type="success" @click="generateChapterContent(index)" size="default">
+              <el-icon><MessageBox /></el-icon> &nbsp;生成该章节内容
+            </el-button>
+            <el-button type="danger" @click="removeChapter(index)" size="default">
+              <el-icon><Close /></el-icon> &nbsp;删除章节
+            </el-button>
+          </div>
+        </div>
+        
+        <el-button 
+          type="primary" 
+          @click="addChapter" 
+          v-if="chapters.length < maxChapters"
+          class="add-chapter-btn"
+          size="large"
+        >
+          <el-icon><Plus /></el-icon> &nbsp;添加章节
+        </el-button>
+      </el-form>
+    </el-card>
+    
+    <el-card v-if="chapters.some(chapter => chapter.content)" class="content-card preview-card">
+      <template #header>
+        <div class="card-header">
+          <span>生成内容预览</span>
+        </div>
+      </template>
+      
+      <div v-for="(chapter, index) in chapters" :key="'content-' + index" class="preview-chapter">
+        <template v-if="chapter.content">
+          <div class="preview-chapter-header">
+            <span class="chapter-number">章节 {{ index + 1 }}</span>
+            <span class="chapter-title">{{ chapter.title }}</span>
+          </div>
+          
+          <el-input 
+            type="textarea" 
+            v-model="chapter.content" 
+            :rows="8"
+            class="content-textarea"
+          ></el-input>
+          
+          <div class="regenerate-actions">
+            <el-button type="info" @click="regenerateChapterContent(index)">
+              <el-icon><Refresh /></el-icon> &nbsp;不满意？重新生成
+            </el-button>
+          </div>
+        </template>
+      </div>
+      
+      <div class="export-actions">
+        <el-button type="warning" @click="exportMarkdown" size="large">
+          <el-icon><Document /></el-icon> &nbsp;导出 Markdown 文件
+        </el-button>
+        <el-button type="primary" @click="exportWord" size="large">
+          <el-icon><Download /></el-icon> &nbsp;导出 Word 文档
+        </el-button>
+      </div>
+    </el-card>
+    
     <div class="trademark-container">
       <img src="@/assets/images/trademark.jpg" alt="trademark" class="floating-trademark" />
     </div>
@@ -212,74 +269,164 @@ watch(
 </template>
 
 <style scoped>
+.writing-assistant-wrapper {
+  position: relative;
+  padding: 24px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e6f7ff 100%);
+  min-height: 100vh;
+}
+
+/* 卡片统一样式 */
+.content-card {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.welcome-card {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  background-color: #e6f7ff;
+  border: 1px solid #91d5ff;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.welcome-header {
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
 .header-actions {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
-.writing-assistant-wrapper {
-  position: relative;
-  padding: 20px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #cbebff 100%);
-  border: 2px solid #91d5ff;
-  border-radius: 10px;
-  margin: 20px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+
+/* 标签高亮 */
+.highlight-text {
+  color: #fa8c16;
 }
-.welcome-bar {
-  background-color: #e6f7ff;
-  color: #1890ff;
-  padding: 10px 15px;
-  border: 1px solid #91d5ff;
-  border-radius: 5px;
-  margin-bottom: 20px;
-  text-align: center;
-  font-size: 16px;
-}
-.writing-assistant-form {
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid #d9d9d9;
-}
+
+/* 章节样式 */
 .chapter-box {
-  margin-bottom: 20px;
-  border: 1px dashed #91d5ff;
-  padding: 15px;
-  border-radius: 5px;
-}
-.preview-area {
-  margin-top: 40px;
-  background-color: #fafafa;
-  padding: 20px;
-  border: 1px solid #d9d9d9;
+  margin-bottom: 24px;
+  border: 1px solid #e8e8e8;
   border-radius: 8px;
+  padding: 20px;
+  background-color: #fafafa;
+  transition: all 0.3s;
 }
-.preview-chapter {
-  margin-bottom: 20px;
+
+.chapter-box:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
-.btn-group {
-  margin-top: 20px;
+
+.chapter-header {
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 12px;
 }
-/* 添加导出按钮组样式 */
-.export-buttons {
+
+.chapter-number {
+  font-size: 16px;
+  font-weight: 600;
+  color: #262626;
+  margin-right: 8px;
+}
+
+.chapter-actions {
   display: flex;
-  gap: 15px;
-  justify-content: center;
-  margin: 20px auto;
+  gap: 12px;
+  margin-top: 16px;
 }
-.export-btn {
+
+/* 预览区域样式 */
+.preview-card {
+  background-color: #ffffff;
+}
+
+.preview-chapter {
+  margin-bottom: 32px;
+}
+
+.preview-chapter:last-child {
+  margin-bottom: 16px;
+}
+
+.preview-chapter-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.chapter-title {
+  font-size: 16px;
   font-weight: 500;
+  color: #434343;
 }
-/* 修改后 */
+
+.content-textarea {
+  border-radius: 4px;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.regenerate-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+/* 导出按钮区域 */
+.export-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed #f0f0f0;
+}
+
+/* 添加章节按钮 */
+.add-chapter-btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* 商标 */
 .trademark-container {
   display: flex;
   justify-content: flex-end;
-  margin-top: 30px;
+  margin-top: 20px;
 }
 
 .floating-trademark {
-  height: 80px;
-  opacity: 0.9;
+  height: 60px;
+  opacity: 0.85;
+  border-radius: 4px;
+}
+
+/* 覆盖element-plus组件库样式 */
+:deep(.el-card__header) {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+:deep(.el-card__body) {
+  padding: 20px;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
 }
 </style>
