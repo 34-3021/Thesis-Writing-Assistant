@@ -1,33 +1,37 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'  // 添加watch和onMounted
-// watch用于监听数据变化，onMounted用于组件挂载后执行代码（钩子中加载数据）
+import { ref, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserstore } from '@/store/user'
 import { GenerateChapterApi } from '@/request/api'
-// 导入工具函数
 import { generateWordDocument, generateMarkdownDocument } from '@/utils/document-formatter'
 
-// 定义章节结构
 interface Chapter {
   title: string
   instruction: string
   content: string
 }
 
-// 从用户store中获取用户名
 const userStore = useUserstore()
 const userDisplayName = ref(userStore.userName)
 const router = useRouter()
 
-// 论文总标题
+// 广告
+const showAdDialog = ref(false)
+const canExport = ref(false)
+const adVideoList = [
+  '/ads/Aerial-photography-of-Fudan-University.mp4',
+  '/ads/Acceptance-letter-of-Fudan-University.mp4'
+]
+// Math.random() 生成一个0到1之间的随机小数，再 * adVideoList.length 将随机数乘以数组长度
+// Math.floor(...) 向下取整，确保得到一个有效的数组索引(0到length-1)
+const adVideoUrl = ref(adVideoList[Math.floor(Math.random() * adVideoList.length)])
+// 用于获取video元素
+const adVideoRef = ref<HTMLVideoElement | null>(null)
+
 const mainTitle = ref('')
-
-// 动态章节列表，初始包含一个章节输入框
 const chapters = ref<Chapter[]>([{ title: '', instruction: '', content: '' }])
-
 const maxChapters = 5
 
-// 调用AI后端生成章节内容的函数（针对单个章节）
 async function generateChapterContent(chapterIndex: number) {
   const chapter = chapters.value[chapterIndex]
   if (!mainTitle.value) {
@@ -42,9 +46,8 @@ async function generateChapterContent(chapterIndex: number) {
     const res = await GenerateChapterApi({
       main_title: mainTitle.value,
       chapter_title: chapter.title,
-      chapter_instruction: chapter.instruction || '' // 如果没有填写说明，传空字符串
+      chapter_instruction: chapter.instruction || ''
     })
-    // 将生成的内容更新到该章节的 content 字段
     chapters.value[chapterIndex].content = res.response
     alert(`章节${chapterIndex+1}内容生成成功！`)
   } catch (error) {
@@ -53,11 +56,8 @@ async function generateChapterContent(chapterIndex: number) {
   }
 }
 
-// 重新生成章节内容的函数
 async function regenerateChapterContent(chapterIndex: number) {
-  // 清空当前章节内容
   chapters.value[chapterIndex].content = ''
-  // 重新生成
   await generateChapterContent(chapterIndex)
 }
 
@@ -66,7 +66,6 @@ function goBack() {
 }
 
 function removeChapter(index: number) {
-  // 删除对应章节
   chapters.value.splice(index, 1)
 }
 
@@ -78,7 +77,6 @@ function addChapter() {
   }
 }
 
-// 导出Markdown文件
 function exportMarkdown() {
   generateMarkdownDocument(
     mainTitle.value, 
@@ -89,24 +87,45 @@ function exportMarkdown() {
   )
 }
 
-// 导出Word文档
-async function exportWord() {
-  try {
-    await generateWordDocument(
-      mainTitle.value, 
-      chapters.value.map(chapter => ({ 
-        title: chapter.title, 
-        content: chapter.content 
-      }))
-    )
-    alert('Word 文档导出成功！')
-  } catch (error) {
-    console.error('导出Word文档失败', error)
-    alert('导出Word文档失败')
+function exportWord() {
+  adVideoUrl.value = adVideoList[Math.floor(Math.random() * adVideoList.length)]
+  showAdDialog.value = true
+  canExport.value = false
+  // 每次打开弹窗时重置视频
+  setTimeout(() => {
+    if (adVideoRef.value) {
+      adVideoRef.value.pause()
+      adVideoRef.value.currentTime = 0
+      adVideoRef.value.load()
+    }
+  }, 0)
+}
+
+function onAdEnded() {
+  canExport.value = true
+}
+
+async function confirmExportWord() {
+  showAdDialog.value = false
+  await generateWordDocument(
+    mainTitle.value, 
+    chapters.value.map(chapter => ({ 
+      title: chapter.title, 
+      content: chapter.content 
+    }))
+  )
+  alert('Word 文档导出成功！')
+}
+
+// 关闭广告弹窗时，强制暂停视频
+function handleAdDialogClose() {
+  showAdDialog.value = false
+  if (adVideoRef.value) {
+    adVideoRef.value.pause()
+    adVideoRef.value.currentTime = 0
   }
 }
 
-// 新增: 保存当前内容到 localStorage
 function saveToLocalStorage() {
   const data = {
     mainTitle: mainTitle.value,
@@ -116,7 +135,6 @@ function saveToLocalStorage() {
   localStorage.setItem('writingAssistantData', JSON.stringify(data))
 }
 
-// 新增: 从 localStorage 加载内容
 function loadFromLocalStorage() {
   const savedData = localStorage.getItem('writingAssistantData')
   if (savedData) {
@@ -130,9 +148,7 @@ function loadFromLocalStorage() {
   }
 }
 
-// 新增: 清空保存的内容
 function clearAll() {
-  // 显示确认对话框
   if (confirm('确定要清空所有内容吗？此操作不可撤销哦！')) {
     localStorage.removeItem('writingAssistantData')
     mainTitle.value = ''
@@ -140,20 +156,17 @@ function clearAll() {
   }
 }
 
-// 组件挂载时加载保存的内容
 onMounted(() => {
   loadFromLocalStorage()
 })
 
-// 监听数据变化，自动保存
 watch(
   [mainTitle, chapters], 
   () => {
     saveToLocalStorage()
   },
-  { deep: true } // 深度监听对象内部变化
+  { deep: true }
 )
-// script表示Vue组件的逻辑部分，可以在其中写入JavaScript代码，如变量、函数等
 </script>
 
 <template>
@@ -266,6 +279,29 @@ watch(
       <img src="@/assets/images/trademark.jpg" alt="trademark" class="floating-trademark" />
     </div>
   </div>
+  <el-dialog 
+    v-model="showAdDialog" 
+    title="Word文档导出难度较高，观看广告后才可导出哦～" 
+    width="600px" 
+    :close-on-click-modal="true" 
+    :show-close="true"
+    @close="handleAdDialogClose"
+  >
+    <video
+      width="100%"
+      controls
+      ref="adVideoRef"
+      @ended="onAdEnded"
+      :src="adVideoUrl"
+      style="border-radius: 8px;"
+    ></video>
+    <div style="margin-top: 8px; text-align: left; font-size: 12px; color: #909399;">
+      提示：可使用快进
+    </div>
+    <div style="margin-top: 16px; text-align: right;">
+      <el-button type="primary" :disabled="!canExport" @click="confirmExportWord">导出Word文档</el-button>
+    </div>
+  </el-dialog>
 </template>
 
 <style scoped>
