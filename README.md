@@ -191,6 +191,10 @@ python backend_algo/vector_import.py
 - ![便捷下载](./screenshots/download.png)  
   *用户可便捷实现下载*
 
+
+- ![广告功能](./screenshots/advertisement.png)  
+  *后续可广告商业化，目前采用剪辑后复旦大学宣传视频*
+
 ---
 
 ## 八、注意事项
