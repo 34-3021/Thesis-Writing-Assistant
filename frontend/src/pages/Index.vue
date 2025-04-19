@@ -25,7 +25,7 @@ import Header from "@/components/Header.vue";
                 <el-button type="primary" size="large" class="start-button" @click="$router.push('/writing-assistant')">
                   <el-icon><Edit /></el-icon> &nbsp;开始写作 <!--&nbsp;是空格的意思-->
                 </el-button>
-                <el-button type="success" size="large" class="start-button" @click="$router.push('/PaperLibrary')">
+                <el-button type="success" size="large" class="start-button" @click="$router.push('/index/paper-library')">
                   <el-icon><Folder /></el-icon> &nbsp;看看我的论文库
                 </el-button>
               </div>
