@@ -1,9 +1,11 @@
 # 添加必要的导入
 import os
 import shutil
-from fastapi import File, UploadFile
+from fastapi import File, UploadFile, Request
 import threading
 from datetime import datetime  # 确保已导入
+from backend_algo.vectorizer import embed_text
+import tiktoken
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -19,9 +21,11 @@ from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
 
-import crud, models, schemas
-from database import SessionLocal, engine
-from security import verify_password
+import backend.crud as crud
+import backend.models as models
+import backend.schemas as schemas
+from backend.database import SessionLocal, engine
+from backend.security import verify_password
 
 import requests
 from backend_algo.schemas import GenerateChapterRequest, ChatResponse
@@ -46,6 +50,13 @@ class TokenData(BaseModel):
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 app = FastAPI()
+
+def truncate_to_token_limit(text, max_tokens=8192, model_name="text-embedding-ada-002"):
+    enc = tiktoken.encoding_for_model(model_name)
+    tokens = enc.encode(text)
+    if len(tokens) > max_tokens:
+        tokens = tokens[:max_tokens]
+    return enc.decode(tokens)
 
 def get_session():
     with SessionLocal() as session:
@@ -117,6 +128,49 @@ async def login_for_access_token(
 async def read_users_me(current_user: Annotated[schemas.User, Depends(get_current_active_user)]):
     return current_user
 
+# 获取问题列表
+@app.get("/questions")
+async def get_questions():
+    import json
+    with open("papers/questions.json", "r", encoding="utf-8") as f:
+        return json.load(f)
+    
+# 批量生成答案
+@app.post("/batch-generate")
+async def batch_generate(request: Request, current_user: Annotated[schemas.User, Depends(get_current_active_user)], db: SessionDep):
+    data = await request.json()
+    questions = data.get("questions", [])
+    results = []
+    for q in questions:
+        chapter_results = []
+        for idx, chapter in enumerate(q["Q"]):
+            # 1. 获取R指定的论文内容
+            ref_ids = q["R"][idx] if isinstance(q["R"][idx], list) else [q["R"][idx]]
+            ref_texts = []
+            for pid in ref_ids:
+                paper = db.query(models.Paper).filter(models.Paper.id == int(pid)).first()
+                if paper:
+                    # 先假设只取前500个字符
+                    ref_texts.append(f"标题：{paper.title}\n摘要：{paper.abstract}\n内容片段：{paper.content[:500]}\n")
+            ref_content = "\n".join(ref_texts)
+            # 2. 构造prompt，明确只参考这些论文
+            prompt = (
+                f"【写作要求】\n章节标题：{chapter[0]}\n章节内容要求：{chapter[1]}\n"
+                f"请严格只参考以下论文内容进行写作：\n{ref_content}\n"
+                "请生成符合要求的章节内容，并在引用处加上论文编号标注。"
+            )
+            req = GenerateChapterRequest(
+                main_title="论文写作助手批量生成",
+                chapter_title=chapter[0],
+                chapter_instruction=chapter[1],
+                prompt=prompt
+            )
+            # 调用章节生成接口
+            resp = await generate_chapter_endpoint(req, current_user, db)
+            chapter_results.append(resp["response"] if isinstance(resp, dict) else resp.response)
+        results.append(chapter_results)
+    return {"data": results}
+
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: SessionDep):
     db_user = crud.get_user_by_username(db, user.username)
@@ -179,6 +233,15 @@ async def delete_paper(
     
     db.delete(paper)
     db.commit()
+
+    # 同步删除Chroma向量
+    try:
+        from backend_algo.retrieval import get_or_create_collection
+        collection = get_or_create_collection()
+        collection.delete(ids=[str(paper_id)])
+        print(f"已同步删除Chroma中论文ID: {paper_id}")
+    except Exception as e:
+        print(f"删除Chroma向量失败: {e}")
     return paper
 
 # 修改后的生成章节接口：在业务层中整合数据库中的论文，并附加向量化后的信息
@@ -198,13 +261,19 @@ async def generate_chapter_endpoint(
     for pid in similar_ids:
         try:
             paper = db.query(models.Paper).filter(models.Paper.id == int(pid)).first()
+            if paper:
+                try:
+                    # 新增：截断内容，防止超长
+                    truncated_content = truncate_to_token_limit(paper.content, max_tokens=8192)
+                    vector = embed_text(truncated_content)
+                    vector_list = vector.tolist()
+                    truncated_vector = vector_list[:5]
+                    related_info += f"论文标题：{paper.title}\n摘要：{paper.abstract}\n向量数据：{truncated_vector}\n\n"
+                except Exception as e:
+                    print(f"向量化失败: {e}")
+                    related_info += f"论文标题：{paper.title}\n摘要：{paper.abstract}\n（向量化失败）\n\n"
         except Exception:
-            paper = None
-        if paper:
-            vector = embed_text(paper.content)
-            vector_list = vector.tolist()
-            truncated_vector = vector_list[:5]
-            related_info += f"论文标题：{paper.title}\n摘要：{paper.abstract}\n向量数据：{truncated_vector}\n\n"
+            continue
     
     # 构造最终提示，包含用户输入和论文向量化数据
     final_prompt = (
@@ -251,7 +320,7 @@ async def upload_paper(
     
     try:
         # 提取PDF文本内容
-        from pdf_parser import extract_pdf_text
+        from backend.pdf_parser import extract_pdf_text
         content = extract_pdf_text(file_path)
         
         # 从文件名中提取标题(去掉扩展名)
@@ -308,6 +377,7 @@ async def upload_paper(
         return paper
         
     except Exception as e:
-        # 处理失败，清理上传的文件
+        import traceback
+        print(traceback.format_exc())  # ← 这里输出详细错误
         os.remove(file_path)
         raise HTTPException(status_code=500, detail=f"处理论文失败: {str(e)}")

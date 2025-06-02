@@ -4,7 +4,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
-import schemas
+import backend_algo.schemas as schemas
 import requests
 
 from pydantic import BaseModel

@@ -16,5 +16,8 @@ def embed_text(text: str) -> np.array:
         "input": [text],
     }).json()
     # 从response中取出第一条（唯一）的embedding
+    if "data" not in response:
+        print("Embedding API error:", response)
+        raise RuntimeError(f"Embedding API error: {response}")
     embedding = response["data"][0]["embedding"]
     return np.array(embedding)

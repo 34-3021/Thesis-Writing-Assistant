@@ -1,11 +1,17 @@
 前端：npm run dev
-后端：uvicorn main:app --port 8000
-后端算法：uvicorn main:app --port 8001
+后端：uvicorn backend.main:app --port 8000  （修改从根目录，保证papers导入）
+后端算法：uvicorn backend_algo.main:app --port 8001（修改从根目录）
 数据库：
 chroma run --path ./data_vector_db --host localhost --port 8002
 
 导入论文：python backend/insert_test_paper.py
+批量导入papers文件夹中的所有（50篇）论文（同时向量化）：python backend/batch_import_papers.py
 向量化论文：python backend_algo/vector_import.py
+
+删除SQL中特定论文：运行delete_test_paper.py
+删除SQL与向量数据库中的所有论文：python backend/clear_all_papers.py
+删除不在SQL中但在向量数据库中的全部（僵尸）论文：python -m backend_algo.clean_chroma_orphan_vectors
+检查当前向量数据库中的所有论文：python -m backend_algo.check_vector_db
 
 按照以下顺序启动：
    - 先启动向量数据库Chroma，因后续向量化和检索依赖它

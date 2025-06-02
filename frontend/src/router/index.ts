@@ -68,7 +68,12 @@ const routes =
             path: '/writing-assistant',  // 新增路由路径
             name: 'WritingAssistant',
             component: WritingAssistant
-        }
+        },
+        {
+            path: '/batch-qa',
+            name: 'BatchQA',
+            component: () => import('@/pages/BatchQA.vue')
+        },
     ];
 
 const router = createRouter({

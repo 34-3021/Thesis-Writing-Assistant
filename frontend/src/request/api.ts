@@ -1,5 +1,7 @@
+import { useUserstore } from '@/store/user'
 import instance from "@/request/http";
 import loginInstance from "@/request/http_login"
+import axios from 'axios'
 
 //一般情况下，接口类型会放到一个文件
 // 下面两个TS接口，表示要传的参数
@@ -103,5 +105,20 @@ export const GenerateChapterApi = (data: {
 export const GetPapersList = (params: { skip: number, limit: number }): Promise<Paper[]> =>
     instance.get('/api/papers/', { params });
   
-  export const DeletePaper = (paperId: number): Promise<Paper> =>
+export const DeletePaper = (paperId: number): Promise<Paper> =>
     instance.delete(`/api/papers/${paperId}`);
+
+export function BatchGenerateApi(questions: any[]) {
+  // 获取token
+  const userStore = useUserstore()
+  const token = userStore.token
+  return axios.post(
+    '/api/batch-generate',
+    { questions },
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  )
+}

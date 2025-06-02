@@ -156,6 +156,10 @@ function clearAll() {
   }
 }
 
+function goToBatchQA() {
+  router.push({ name: 'BatchQA' })
+}
+
 onMounted(() => {
   loadFromLocalStorage()
 })
@@ -172,6 +176,9 @@ watch(
 <template>
   <div class="writing-assistant-wrapper">
     <div class="header-actions">
+      <el-button type="primary" @click="goToBatchQA" size="large" style="margin-bottom: 16px;">
+        <el-icon><Document /></el-icon> &nbsp;批量回答问题
+      </el-button>
       <el-button type="primary" @click="goBack" size="large">
         <el-icon><Back /></el-icon> &nbsp;返回
       </el-button>
