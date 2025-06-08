@@ -1,52 +1,252 @@
 [
-  {"id": 1, "path": "papers/paper_001.pdf"},
-  {"id": 2, "path": "papers/paper_002.pdf"},
-  {"id": 3, "path": "papers/paper_003.pdf"},
-  {"id": 4, "path": "papers/paper_004.pdf"},
-  {"id": 5, "path": "papers/paper_005.pdf"},
-  {"id": 6, "path": "papers/paper_006.pdf"},
-  {"id": 7, "path": "papers/paper_007.pdf"},
-  {"id": 8, "path": "papers/paper_008.pdf"},
-  {"id": 9, "path": "papers/paper_009.pdf"},
-  {"id": 10, "path": "papers/paper_010.pdf"},
-  {"id": 11, "path": "papers/paper_011.pdf"},
-  {"id": 12, "path": "papers/paper_012.pdf"},
-  {"id": 13, "path": "papers/paper_013.pdf"},
-  {"id": 14, "path": "papers/paper_014.pdf"},
-  {"id": 15, "path": "papers/paper_015.pdf"},
-  {"id": 16, "path": "papers/paper_016.pdf"},
-  {"id": 17, "path": "papers/paper_017.pdf"},
-  {"id": 18, "path": "papers/paper_018.pdf"},
-  {"id": 19, "path": "papers/paper_019.pdf"},
-  {"id": 20, "path": "papers/paper_020.pdf"},
-  {"id": 21, "path": "papers/paper_021.pdf"},
-  {"id": 22, "path": "papers/paper_022.pdf"},
-  {"id": 23, "path": "papers/paper_023.pdf"},
-  {"id": 24, "path": "papers/paper_024.pdf"},
-  {"id": 25, "path": "papers/paper_025.pdf"},
-  {"id": 26, "path": "papers/paper_026.pdf"},
-  {"id": 27, "path": "papers/paper_027.pdf"},
-  {"id": 28, "path": "papers/paper_028.pdf"},
-  {"id": 29, "path": "papers/paper_029.pdf"},
-  {"id": 30, "path": "papers/paper_030.pdf"},
-  {"id": 31, "path": "papers/paper_031.pdf"},
-  {"id": 32, "path": "papers/paper_032.pdf"},
-  {"id": 33, "path": "papers/paper_033.pdf"},
-  {"id": 34, "path": "papers/paper_034.pdf"},
-  {"id": 35, "path": "papers/paper_035.pdf"},
-  {"id": 36, "path": "papers/paper_036.pdf"},
-  {"id": 37, "path": "papers/paper_037.pdf"},
-  {"id": 38, "path": "papers/paper_038.pdf"},
-  {"id": 39, "path": "papers/paper_039.pdf"},
-  {"id": 40, "path": "papers/paper_040.pdf"},
-  {"id": 41, "path": "papers/paper_041.pdf"},
-  {"id": 42, "path": "papers/paper_042.pdf"},
-  {"id": 43, "path": "papers/paper_043.pdf"},
-  {"id": 44, "path": "papers/paper_044.pdf"},
-  {"id": 45, "path": "papers/paper_045.pdf"},
-  {"id": 46, "path": "papers/paper_046.pdf"},
-  {"id": 47, "path": "papers/paper_047.pdf"},
-  {"id": 48, "path": "papers/paper_048.pdf"},
-  {"id": 49, "path": "papers/paper_049.pdf"},
-  {"id": 50, "path": "papers/paper_050.pdf"}
+  {
+    "path": "papers/paper_001.pdf",
+    "title": "传统文化视域下的高中历史教学创新模式研究",
+    "author": "马永雷"
+  },
+  {
+    "path": "papers/paper_002.pdf",
+    "title": "中国共产党以自我革命引领社会革命的内涵、理据与策略",
+    "author": "滕明政"
+  },
+  {
+    "path": "papers/paper_003.pdf",
+    "title": "中国共产党自我革命意识的历史演进——基于三个“历史决议”的考察",
+    "author": "朱欣婷"
+  },
+  {
+    "path": "papers/paper_004.pdf",
+    "title": "人文精神与高中历史教学的融合路径探析",
+    "author": "杨欣欣"
+  },
+  {
+    "path": "papers/paper_005.pdf",
+    "title": "军机大臣议复机制与清朝国家政治体制重构",
+    "author": "刘文鹏"
+  },
+  {
+    "path": "papers/paper_006.pdf",
+    "title": "高中历史教学中历史解释素养的培养实践",
+    "author": "周陈育"
+  },
+  {
+    "path": "papers/paper_007.pdf",
+    "title": "解码中国共产党自我革命的百年实践密码",
+    "author": "李璠嫔"
+  },
+  {
+    "path": "papers/paper_008.pdf",
+    "title": "清代内阁大学士兼任军机大臣之论",
+    "author": "刘洋"
+  },
+  {
+    "path": "papers/paper_009.pdf",
+    "title": "智谋深远、敏于时局的清末军机大臣曹毓瑛",
+    "author": "石磊"
+  },
+  {
+    "path": "papers/paper_010.pdf",
+    "title": "高中历史教学中家国情怀的培育",
+    "author": "陈远见"
+  },
+  {
+    "path": "papers/paper_011.pdf",
+    "title": "ChatGPT辅助中学地理教学——应用实践、挑战及展望",
+    "author": "周莉莹"
+  },
+  {
+    "path": "papers/paper_012.pdf",
+    "title": "乐山市2023年水环境质量特征分析",
+    "author": "王松"
+  },
+  {
+    "path": "papers/paper_013.pdf",
+    "title": "探讨环境监测在生态环境保护中的作用",
+    "author": "牟全朋"
+  },
+  {
+    "path": "papers/paper_014.pdf",
+    "title": "文学赏析与地理教学的跨学科融合实践",
+    "author": "陆凯"
+  },
+  {
+    "path": "papers/paper_015.pdf",
+    "title": "长江经济带城镇化与生态环境耦合协调时空变化及影响因素分析",
+    "author": "黄玲玲"
+  },
+  {
+    "path": "papers/paper_016.pdf",
+    "title": "水环境监测技术及水污染防治策略研究",
+    "author": "武满满"
+  },
+  {
+    "path": "papers/paper_017.pdf",
+    "title": "生物质炭对水环境中硝酸盐氮吸附性能研究",
+    "author": "赵云"
+  },
+  {
+    "path": "papers/paper_018.pdf",
+    "title": "广州市城市化与生态环境变化耦合协调分析",
+    "author": "罗婧"
+  },
+  {
+    "path": "papers/paper_019.pdf",
+    "title": "黄土高原地下啮齿类动物挖掘对土壤侵蚀的贡献",
+    "author": "白晓亮"
+  },
+  {
+    "path": "papers/paper_020.pdf",
+    "title": "黄土高原植被抗旱性监测及影响因素分析",
+    "author": "程西安"
+  },
+  {
+    "path": "papers/paper_021.pdf",
+    "title": "人工智能在高职大学生心理健康评估和干预中的应用初探",
+    "author": "吴海萍"
+  },
+  {
+    "path": "papers/paper_022.pdf",
+    "title": "体育锻炼对大学生心理健康的积极影响研究",
+    "author": "王雅琴"
+  },
+  {
+    "path": "papers/paper_023.pdf",
+    "title": "团体叙事心理干预对青少年抑郁症患者非自杀性自伤行为的影响",
+    "author": "潘建波"
+  },
+  {
+    "path": "papers/paper_024.pdf",
+    "title": "基于“三教”改革的老年心理护理实务课程教学改革研究",
+    "author": "梁淑双"
+  },
+  {
+    "path": "papers/paper_025.pdf",
+    "title": "大学生心理健康水平和睡眠质量现状及其影响因素",
+    "author": "袁婵"
+  },
+  {
+    "path": "papers/paper_026.pdf",
+    "title": "大学生情绪管理能力对心理健康的保障研析",
+    "author": "张本茹"
+  },
+  {
+    "path": "papers/paper_027.pdf",
+    "title": "心理护理在老年慢性阻塞性肺疾病及对患者焦虑抑郁情绪的影响",
+    "author": "张俊"
+  },
+  {
+    "path": "papers/paper_028.pdf",
+    "title": "恋爱矛盾与心理健康：高校辅导员的工作策略与案例分析",
+    "author": "刘玥杉"
+  },
+  {
+    "path": "papers/paper_029.pdf",
+    "title": "聚焦解决模式的心理干预对急性白血病患者心理状态及睡眠质量的影响",
+    "author": "蒋凤云"
+  },
+  {
+    "path": "papers/paper_030.pdf",
+    "title": "青少年主观幸福感与心理健康的非线性关系及其阈值效应",
+    "author": "王一鸣"
+  },
+  {
+    "path": "papers/paper_031.pdf",
+    "title": "以水为媒 破解人体代谢谜题",
+    "author": "罗云鹏"
+  },
+  {
+    "path": "papers/paper_032.pdf",
+    "title": "实验室养“毒虫”，揭开水稻抗病毒秘密",
+    "author": "葛家诺"
+  },
+  {
+    "path": "papers/paper_033.pdf",
+    "title": "基于学科核心素养的高中生物实验教学探究",
+    "author": "张颖"
+  },
+  {
+    "path": "papers/paper_034.pdf",
+    "title": "心血管代谢疾病患者肥胖状态与痴呆的关联研究",
+    "author": "张小宇"
+  },
+  {
+    "path": "papers/paper_035.pdf",
+    "title": "水稻病毒致病机制的共性策略",
+    "author": "亓庆玲"
+  },
+  {
+    "path": "papers/paper_036.pdf",
+    "title": "生命文明教育与高中生物课堂结合的探索",
+    "author": "马丹娜"
+  },
+  {
+    "path": "papers/paper_037.pdf",
+    "title": "水稻体内“抗病毒卫士”可增强抗病毒能力",
+    "author": "蒋丰蔓"
+  },
+  {
+    "path": "papers/paper_038.pdf",
+    "title": "肠道微生物群在人体代谢健康中的机制与干预策略",
+    "author": "江乔"
+  },
+  {
+    "path": "papers/paper_039.pdf",
+    "title": "谈新高考模式对高中生物教学的影响及应对策略",
+    "author": "王芳"
+  },
+  {
+    "path": "papers/paper_040.pdf",
+    "title": "罗汉果甜苷提取物对人体代谢的影响研究",
+    "author": "欧珏平"
+  },
+  {
+    "path": "papers/paper_041.pdf",
+    "title": "马克思主义中国化进程中的红色文化价值研究",
+    "author": "刘舒羽"
+  },
+  {
+    "path": "papers/paper_042.pdf",
+    "title": "习近平文化思想的提出背景、理论特质和实践意义",
+    "author": "周雪梅"
+  },
+  {
+    "path": "papers/paper_043.pdf",
+    "title": "围绕“两个结合”不断开辟马克思主义中国化时代化新境界",
+    "author": "卞庆功"
+  },
+  {
+    "path": "papers/paper_044.pdf",
+    "title": "毛泽东发挥历史主动精神的方法论特质",
+    "author": "彭冰冰"
+  },
+  {
+    "path": "papers/paper_045.pdf",
+    "title": "数字化转型背景下马克思主义中国化思想创新研究",
+    "author": "李梁"
+  },
+  {
+    "path": "papers/paper_046.pdf",
+    "title": "推进中国式现代化要继续把制造业搞好",
+    "author": "郝思斯"
+  },
+  {
+    "path": "papers/paper_047.pdf",
+    "title": "论习近平文化思想生成的辩证逻辑",
+    "author": "郑志康"
+  },
+  {
+    "path": "papers/paper_048.pdf",
+    "title": "论毛泽东“决定的因素是人不是物”的思想及现实启示",
+    "author": "罗新茂"
+  },
+  {
+    "path": "papers/paper_049.pdf",
+    "title": "马克思主义民主哲学的辩证逻辑与实践路径",
+    "author": "刘林"
+  },
+  {
+    "path": "papers/paper_050.pdf",
+    "title": "高校马克思主义认同教育：内涵、问题及对策",
+    "author": "张金鸽"
+  }
 ]

@@ -42,8 +42,8 @@ def main():
 
         # 提取文本
         content = extract_pdf_text(abs_path)
-        title = os.path.splitext(os.path.basename(pdf_path))[0]
-        author = "未知"
+        title = paper.get('title') or os.path.splitext(os.path.basename(pdf_path))[0]
+        author = paper.get('author') or "未知"
         abstract = content[:500] if content else ""
 
         # 插入数据库

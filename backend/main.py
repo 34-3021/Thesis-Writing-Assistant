@@ -1,12 +1,18 @@
 # 添加必要的导入
 import os
+os.environ["TRANSFORMERS_OFFLINE"] = "1" # 重要：让transformers库在离线模式下运行，只用本地缓存
+import json
 import shutil
-from fastapi import File, UploadFile, Request
+from fastapi import File, UploadFile, Request, Body # Body用于处理请求体
+from bert_score import score as bert_score # 需要安装 bert-score 库（外网）
+from rouge_chinese import Rouge
 import threading
 from datetime import datetime  # 确保已导入
 from backend_algo.vectorizer import embed_text
 import tiktoken
 import sys
+import re # 用于清理引用格式
+import csv # 加载 mapping.csv，用于建立逻辑编号到 file_path 的映射
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from datetime import datetime, timedelta, timezone
@@ -38,6 +44,8 @@ SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+rouge = Rouge()
+
 # 自动创建数据库表
 models.Base.metadata.create_all(bind=engine)
 
@@ -50,6 +58,15 @@ class TokenData(BaseModel):
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 app = FastAPI()
+
+number_to_file = {}
+with open('papers/mapping.csv', encoding='utf-8') as f:
+    reader = csv.reader(f)
+    next(reader)  # 跳过表头
+    for row in reader:
+        # 假设第一列是编号文件名，如 paper_005.pdf
+        num = int(row[0].replace('paper_', '').replace('.pdf', ''))
+        number_to_file[num] = row[0]
 
 def truncate_to_token_limit(text, max_tokens=8192, model_name="text-embedding-ada-002"):
     enc = tiktoken.encoding_for_model(model_name)
@@ -78,6 +95,147 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+# 构建参考文献列表的函数
+def build_reference_list(ref_ids, db):
+    refs = []
+    for logic_id in ref_ids:
+        file_name = number_to_file.get(logic_id)
+        if not file_name:
+            continue
+        paper = db.query(models.Paper).filter(models.Paper.file_path.like(f"%{file_name}%")).first()
+        if paper:
+            ref = f"[{logic_id}]{paper.author if paper.author else '未知'}，{paper.title if paper.title else file_name}"
+            # 如有url字段可加上
+            refs.append(ref)
+    if refs:
+        return "参考文献：\n" + "\n".join(refs)
+    else:
+        return ""
+
+def strip_reference(text):
+    # 去除“参考文献”及其后内容
+    idx = text.find("参考文献")
+    if idx != -1:
+        return text[:idx].strip()
+    return text.strip()
+
+import jieba
+def clean_for_rouge(text):
+    # 不去除“参考文献”及其后内容
+    # jieba分词
+    text = ' '.join(jieba.cut(text))
+    return text.strip()
+
+# 清理引用格式的函数
+def clean_references(text, allowed_ids):
+    # 0. 先把所有多余右中括号（如[5]]、[8]]）变成[5]、[8]
+    text = re.sub(r'\[(\d+)\]+', r'[\1]', text)
+
+    # 1. 去除所有markdown标题、编号、列表等结构
+    text = re.sub(r'^#{1,6}\s*.*$', '', text, flags=re.MULTILINE)  # 去除所有#标题行
+    text = re.sub(r'^\d+\.\s+', '', text, flags=re.MULTILINE)      # 去除编号列表
+    text = re.sub(r'^[-*]\s+', '', text, flags=re.MULTILINE)       # 去除无序列表
+    text = re.sub(r'^\s*$', '', text, flags=re.MULTILINE)          # 去除空行
+
+    # 2. 强力去除正文中所有“参考文献”及其下方编号行（包括“参考文献：”等变体）
+    text = re.sub(r'参考文献[:：]?\s*(\n\s*\[\d+\].*)*', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'#+\s*\d*\s*参考文献.*(\n(\[.*\].*)?)*', '', text, flags=re.IGNORECASE)
+    # 把有“参考”或“引用文献”字样的行也全部去除（包括“参考：”“引用文献：[2]”等）
+    text = re.sub(r'^\s*(参考|引用文献|引用|文献)[^，。；:：\d\[]*[:：]?\s*(\[\d+\])?.*\n?', '', text, flags=re.MULTILINE)
+    # 去除正文中单独成行的“作者. 题目. ...”等伪文献条目
+    text = re.sub(r'^[\u4e00-\u9fa5A-Za-z·、，,.\s]{2,20}[.．]\s*.+[.。]\s*\n?', '', text, flags=re.MULTILINE)
+
+    # 3. 处理所有括号包裹的引用（如（[5,14]）、([5][14])、（[5][14]）等，支持中英文括号、逗号、空格）
+    def multi_ref_repl(m):
+        nums = re.findall(r'\[(\d+)\]', m.group(0))
+        seen = set()
+        nums = [int(x) for x in nums if int(x) in allowed_ids and not (x in seen or seen.add(x))]
+        return ''.join(f'[{n}]' for n in nums)
+    text = re.sub(r'[（(][^）)]*[）)]', multi_ref_repl, text)
+
+    # 4. 替换所有（[x]）、([x])、［x］、【x】、｛x｝等为[x]
+    text = re.sub(r'[（(【［\[]\s*(\d+)\s*[）)】］\]]', r'[\1]', text)
+
+    # 5. 去除“见论文[14]”“（见论文[14]）”等花样引用
+    text = re.sub(r'（?见论文\[(\d+)\]）?', lambda m: f"[{m.group(1)}]" if int(m.group(1)) in allowed_ids else '', text)
+    text = re.sub(r'如论文\[(\d+)\]所述', lambda m: f"[{m.group(1)}]" if int(m.group(1)) in allowed_ids else '', text)
+
+    # 6. 只保留 [数字] 格式且数字在 allowed_ids（去除如[e1]等非数字引用）
+    def repl(m):
+        nums = [int(x) for x in re.findall(r'\d+', m.group(0))]
+        seen = set()
+        nums = [x for x in nums if x in allowed_ids and not (x in seen or seen.add(x))]
+        if nums:
+            return ''.join(f'[{n}]' for n in nums)
+        else:
+            return ''
+    text = re.sub(r'[\[\［][^\]\］]+[\]\］]', repl, text)
+
+    # 7. 去除 paper_050 等
+    text = re.sub(r'paper_\d{3}', '', text)
+
+    # 8. 去除正文中单独成行的引用编号（如"[16] [17]"、"[19][20]"等）
+    text = re.sub(r'^\s*(?:\[\d+\]\s*){1,}\s*$', '', text, flags=re.MULTILINE)
+
+    # 9. 参考文献部分只保留 [x]作者，论文标题（可选加网址）
+    lines = text.splitlines()
+    in_ref = False
+    new_lines = []
+    for line in lines:
+        if '参考文献' in line:
+            in_ref = True
+            new_lines.append(line)
+            continue
+        if in_ref:
+            m = re.match(r'\[(\d+)\](.*?)[，,](.*?)(https?://\S+)?', line)
+            if m and int(m.group(1)) in allowed_ids:
+                ref_line = f"[{m.group(1)}]{m.group(2).strip()}，{m.group(3).strip()}" 
+                if m.group(4):
+                    ref_line += f" {m.group(4)}"
+                new_lines.append(ref_line)
+            # 跳过其它参考文献行
+        else:
+            new_lines.append(line)
+    text = '\n'.join(new_lines)
+
+    # 10. 去除所有行内markdown加粗/斜体/删除线等
+    text = re.sub(r'(\*\*|__)(.*?)\1', r'\2', text)
+    text = re.sub(r'(\*|_)(.*?)\1', r'\2', text)
+    text = re.sub(r'~~(.*?)~~', r'\1', text)
+    # # 11. 去除每段开头的 [数字][数字]... 或 纯数字编号（如 43. 45. 43、45) 及其变体
+    # text = re.sub(r'^(?:\[\d+\]){1,}\s*', '', text, flags=re.MULTILINE)  # 行首连续引用
+    # text = re.sub(r'^\s*\d+[\.\、\)]\s*', '', text, flags=re.MULTILINE)   # 行首数字+点/顿号/括号
+    # text = re.sub(r'^\s*\d+\s*$', '', text, flags=re.MULTILINE)           # 行首纯数字单独成行
+
+    return text
+
+# 调用reranker服务对候选论文进行重排序，返回排序后的论文列表
+def rerank_papers(query, candidate_papers, top_n=3):
+    rerank_url = "http://localhost:8001/v1/rerank"  # 替换为你的实际reranker服务地址
+    payload = {
+        "model": "bge-reranker-v2-m3",
+        "query": query,
+        "documents": [f"标题: {p['title']}\n内容: {p['content']}" for p in candidate_papers],
+        "top_n": top_n
+    }
+    try:
+        resp = requests.post(rerank_url, json=payload, timeout=30)
+        resp.raise_for_status()
+        rerank_result = resp.json()
+        reranked_docs = rerank_result['reranked_documents']
+        # 按顺序返回排序后的论文对象
+        reranked_papers = []
+        for doc in reranked_docs:
+            for p in candidate_papers:
+                if doc.startswith(f"标题: {p['title']}"):
+                    reranked_papers.append(p)
+                    break
+        return reranked_papers
+    except Exception as e:
+        print(f"Reranker调用失败，降级为embedding排序: {e}")
+        # 只返回前top_n个候选论文
+        return candidate_papers[:top_n]
 
 async def get_current_user(
         token: Annotated[str, Depends(oauth2_scheme)],
@@ -141,35 +299,136 @@ async def batch_generate(request: Request, current_user: Annotated[schemas.User,
     data = await request.json()
     questions = data.get("questions", [])
     results = []
+    save_records = []  # 新增，用于保存生成的章节记录
     for q in questions:
         chapter_results = []
         for idx, chapter in enumerate(q["Q"]):
-            # 1. 获取R指定的论文内容
-            ref_ids = q["R"][idx] if isinstance(q["R"][idx], list) else [q["R"][idx]]
-            ref_texts = []
-            for pid in ref_ids:
-                paper = db.query(models.Paper).filter(models.Paper.id == int(pid)).first()
+            all_ref_ids = q["R"][idx] if isinstance(q["R"][idx], list) else [q["R"][idx]]
+            # 1. 先获取这10篇论文的内容
+            papers = []
+            for logic_id in all_ref_ids:
+                file_name = number_to_file.get(logic_id)
+                if not file_name:
+                    continue
+                paper = db.query(models.Paper).filter(models.Paper.file_path.like(f"%{file_name}%")).first()
                 if paper:
-                    # 先假设只取前500个字符
-                    ref_texts.append(f"标题：{paper.title}\n摘要：{paper.abstract}\n内容片段：{paper.content[:500]}\n")
+                    papers.append({
+                        "id": logic_id,
+                        "title": paper.title,
+                        "content": paper.content[:8000]
+                    })
+            # 2. 用向量检索工具筛选最相关的3篇
+            # 用章节标题+指引作为检索query
+            query_text = chapter[0] + " " + chapter[1]
+            # 只在这10篇中检索，需传入限定的id和内容
+            import numpy as np
+            from backend_algo.vectorizer import embed_text
+            query_vec = embed_text(query_text)
+            paper_vecs = [embed_text(p["content"]) for p in papers]
+            sims = [float(np.dot(query_vec, v) / (np.linalg.norm(query_vec) * np.linalg.norm(v) + 1e-8)) for v in paper_vecs]
+            topk_idx = np.argsort(sims)[-10:][::-1]  # 先召回top10
+            candidate_papers = [papers[i] for i in topk_idx]
+
+            # 用reranker重排序，选top3
+            selected_papers = rerank_papers(query_text, candidate_papers, top_n=3)
+            selected_ids = [p["id"] for p in selected_papers]
+            # 3. 拼接内容，只给AI最相关的3篇
+            ref_texts = [
+                f"[{p['id']}] {p['title']}\n内容片段：{p['content']}\n"
+                for p in selected_papers
+            ]
             ref_content = "\n".join(ref_texts)
-            # 2. 构造prompt，明确只参考这些论文
+            # 4. 后续prompt拼接与AI调用时，R字段只允许selected_ids
             prompt = (
+                f"请严格只参考下列论文（编号见[]）进行写作，不允许引用其它论文：\n{ref_content}\n"
                 f"【写作要求】\n章节标题：{chapter[0]}\n章节内容要求：{chapter[1]}\n"
-                f"请严格只参考以下论文内容进行写作：\n{ref_content}\n"
-                "请生成符合要求的章节内容，并在引用处加上论文编号标注。"
+                f"正文引用格式必须统一为：[编号]，如[14]，紧跟在引用句子后面，不允许出现“见论文[14]”“（见论文[14]）”等其它写法。\n"
+                f"只允许在正文中引用以下编号：{','.join(str(x) for x in selected_ids)}，严禁出现其它编号或引用。\n"
+                "如无内容可引用，不要强行加编号。如果给到的论文与内容完全无关，也无需引用，\n"
+                "**引用编号只能紧跟在引用内容句子末尾，不允许出现在段落开头或单独成行，不允许每段开头加编号。**\n"
+                "**正文请用自然段落，不要markdown格式，不要分级标题、编号、列表。也不要在文末输出‘参考文献’的小节！**\n"
+                "**再次重申：直接回答章节的写作内容。不要任何引入，请勿在文末输出参考文献。请勿在文末输出‘参考文献’的小节。**\n"
+                "请生成符合要求的章节内容。"
             )
-            req = GenerateChapterRequest(
-                main_title="论文写作助手批量生成",
-                chapter_title=chapter[0],
-                chapter_instruction=chapter[1],
-                prompt=prompt
-            )
-            # 调用章节生成接口
-            resp = await generate_chapter_endpoint(req, current_user, db)
-            chapter_results.append(resp["response"] if isinstance(resp, dict) else resp.response)
+            # 后续AI调用、clean_references、build_reference_list等逻辑不变，只需把selected_ids传下去
+            max_retry = 3
+            for retry in range(max_retry):
+                req = GenerateChapterRequest(
+                    main_title="论文写作助手批量生成",
+                    chapter_title=chapter[0],
+                    chapter_instruction=chapter[1],
+                    prompt=prompt
+                )
+                resp = await generate_chapter_endpoint(req, current_user, db)
+                raw_answer = resp["response"] if isinstance(resp, dict) else resp.response
+                cleaned_answer = clean_references(raw_answer, set(selected_ids))
+                used_ids = set(int(x) for x in re.findall(r'\[(\d+)\]', cleaned_answer) if int(x) in selected_ids)
+                reference_list = build_reference_list(used_ids, db)
+                if reference_list.strip():
+                    break
+            chapter_results.append(cleaned_answer + ("\n\n" + reference_list if reference_list else ""))
         results.append(chapter_results)
+        # 保存每个问题的Q/A/R/AI
+        save_records.append({
+            "Q": q["Q"],
+            "A": q.get("A", []),
+            "R": q.get("R", []),
+            "AI": chapter_results
+        })
+    # 自动保存到workspace
+    save_dir = os.path.join(os.path.dirname(__file__), "../workspace")
+    os.makedirs(save_dir, exist_ok=True)
+    save_path = os.path.join(save_dir, f"batch_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    with open(save_path, "w", encoding="utf-8") as f:
+        json.dump(save_records, f, ensure_ascii=False, indent=2)
     return {"data": results}
+
+# 批量评测生成内容
+@app.post("/evaluate-batch-generate")
+async def evaluate_batch_generate(
+    ai_results: list = Body(...),
+):
+    with open("papers/questions.json", "r", encoding="utf-8") as f:
+        questions = json.load(f)
+    std_answers = [q["A"] for q in questions]
+
+    results = []
+    for i, (ai_ans_list, std_ans_list) in enumerate(zip(ai_results, std_answers)):
+        q_result = []
+        for j, (ai_text, std_text) in enumerate(zip(ai_ans_list, std_ans_list)):
+            # 不去除“参考文献”及其后内容
+            ai_main = ai_text.strip()
+            std_main = std_text.strip()
+            # 仅ROUGE需要分词
+            ai_cut = clean_for_rouge(ai_main)
+            std_cut = clean_for_rouge(std_main)
+            scores = rouge.get_scores(ai_cut, std_cut)[0]
+            # BERTScore直接用原文
+            try:
+                P, R, F1 = bert_score(
+                    [ai_main], [std_main],
+                    model_type="bert-base-chinese",  # 只写模型名
+                    lang="zh",
+                    rescale_with_baseline=True
+                )
+                bert_f1 = float(F1[0])
+            except Exception as e:
+                print(f"BERTScore计算失败: {e}")
+                bert_f1 = -1
+            print(f"==== 问题{i+1} 章节{j+1} ====")
+            print("AI生成内容（分词后）:", ai_cut)
+            print("标准答案（分词后）:", std_cut)
+            print(f"RougeL: {scores['rouge-l']['f']:.4f}, Rouge1: {scores['rouge-1']['f']:.4f}, Rouge2: {scores['rouge-2']['f']:.4f}, BERTScore: {bert_f1:.4f}")
+            q_result.append({
+                "rougeL": float(scores['rouge-l']['f']),
+                "rouge1": float(scores['rouge-1']['f']),
+                "rouge2": float(scores['rouge-2']['f']),
+                "bert_score": bert_f1,
+                "ai_text": ai_text,
+                "std_text": std_text
+            })
+        results.append(q_result)
+    return {"results": results}
 
 @app.post("/users/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: SessionDep):
@@ -251,45 +510,11 @@ async def generate_chapter_endpoint(
     current_user: Annotated[schemas.User, Depends(get_current_active_user)],
     db: SessionDep
 ):
-    # 构造检索用文本，组合用户输入信息
-    query_text = f"{request.main_title} {request.chapter_title} {request.chapter_instruction}"
-    retrieval_results = search_similar_papers(query_text, n_results=3)
-    similar_ids = retrieval_results.get("ids", [[]])[0]
-    
-    # 遍历检索到的论文，获取向量化后的数据（示例：取前5个数）
-    related_info = ""
-    for pid in similar_ids:
-        try:
-            paper = db.query(models.Paper).filter(models.Paper.id == int(pid)).first()
-            if paper:
-                try:
-                    # 新增：截断内容，防止超长
-                    truncated_content = truncate_to_token_limit(paper.content, max_tokens=8192)
-                    vector = embed_text(truncated_content)
-                    vector_list = vector.tolist()
-                    truncated_vector = vector_list[:5]
-                    related_info += f"论文标题：{paper.title}\n摘要：{paper.abstract}\n向量数据：{truncated_vector}\n\n"
-                except Exception as e:
-                    print(f"向量化失败: {e}")
-                    related_info += f"论文标题：{paper.title}\n摘要：{paper.abstract}\n（向量化失败）\n\n"
-        except Exception:
-            continue
-    
-    # 构造最终提示，包含用户输入和论文向量化数据
-    final_prompt = (
-        f"论文题目：{request.main_title}\n"
-        f"章节标题：{request.chapter_title}\n"
-        f"要求：{request.chapter_instruction}\n"
-    )
-    if related_info:
-        final_prompt += "请参考以下相关论文（附向量数据）：\n" + related_info
-    final_prompt += "请根据上述信息生成详细的章节内容。"
-    
     payload = {
         "main_title": request.main_title,
         "chapter_title": request.chapter_title,
         "chapter_instruction": request.chapter_instruction,
-        "prompt": final_prompt
+        "prompt": request.prompt
     }
     resp = requests.post('http://localhost:8001/chat/generate-chapter', json=payload, timeout=60)
     if resp.status_code != 200:
@@ -329,8 +554,8 @@ async def upload_paper(
         # 简单推断作者(使用上传用户的姓名)
         author = f"{current_user.first_name} {current_user.last_name}"
         
-        # 简单提取摘要(取内容前500个字符)
-        abstract = content[:500] if content else ""
+        # 提取摘要
+        abstract = content[:800] if content else ""
         
         # 创建论文记录
         paper = crud.create_paper(
@@ -353,7 +578,7 @@ async def upload_paper(
                 collection = get_or_create_collection()
                 
                 # 将论文内容向量化并存入向量数据库
-                paper_text = f"标题: {paper.title}\n摘要: {paper.abstract}\n内容: {paper.content}"
+                paper_text = f"标题: {paper.title}\n内容: {paper.content}"
                 
                 # 添加到向量数据库
                 collection.add(

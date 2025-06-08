@@ -4,59 +4,47 @@
 商标：
 ![商标](./frontend/src/assets/images/trademark.jpg)
 
+![登录界面展示](./screenshots/login.png) 
+
 ## 一、项目简介
 
-AI论文写作助手系统是一个基于大语言模型的智能论文写作平台，采用前端（Vue）、后端业务（FastAPI）、后端算法（FastAPI+向量数据库）三层架构。系统支持论文智能生成、分章节管理、论文库上传与检索、会话保存、免密登录、文档导出等功能，极大提升学术写作效率。
+本项目为基于大语言模型的智能论文写作平台，采用前端（Vue）、后端业务（FastAPI）、后端算法（FastAPI+向量数据库）三层架构。系统支持论文智能生成、分章节管理、论文库上传与检索、写作记录自动保存、批量生成与评测、文档导出等功能。极大提升学术写作效率。
 
-- ![登录界面展示](./screenshots/login.png) 
-
----
-
-## 二、功能概述
-
-- **用户注册与登录**（含一小时免密登录）
-- **论文写作助手**（AI驱动，分章节生成）
-- **论文库管理**（PDF上传、摘要展示、删除）
-- **写作记录自动保存与恢复**
-- **章节内容不满意可重新生成**
-- **导出Word/Markdown文档**
-- **前端美化与品牌设计**
+**本项目的算法与创新性工作详见随包提交的报告文档，README 仅介绍运行方法与基本操作。**
 
 ---
 
-## 三、技术栈
-
-- **前端**：Vue3、TypeScript、Element Plus、Pinia、Axios
-- **后端业务层**：FastAPI、SQLAlchemy、PyJWT
-- **后端算法层**：FastAPI、大语言模型API、Chroma向量数据库
-- **数据库**：MySQL、Chroma
-
----
-
-## 四、项目结构
+## 二、项目结构
 
 ```
 mysql_fastapi_vue_sample_project/
-├── frontend/         # 前端Vue项目
-├── backend/          # 后端业务层
-├── backend_algo/     # 后端算法层
-├── data_vector_db/   # 向量数据库
-├── 指令.txt          # 启动指令说明
-└── README.md
+├── frontend/           # 前端Vue项目
+├── backend/            # 后端业务层
+├── backend_algo/       # 后端算法层
+├── data_vector_db/     # 向量数据库（Chroma相关文件）
+├── eval_results/       # 评测结果导出目录（如BERTScore、ROUGE等自动评测结果）
+├── papers/             # 数据集文件夹（含mapping.csv、questions.json、questions.txt等）
+├── tools/              # 工具脚本文件夹（如download_model.py等辅助脚本）
+├── workspace/          # AI生成内容与评测结果自动保存目录
+├── 指令.txt            # 启动与常用操作指令说明
+└── README.md           # 本说明文档
 ```
 
 ---
 
-## 五、安装与运行方法
+## 三、环境准备
 
-### 1. 环境准备
+Node.js 16+
 
-- Node.js 16+
-- Python 3.12
-- MySQL
-- Chroma 向量数据库
+Python 3.12
 
-### 2. 安装依赖
+MySQL
+
+Chroma 向量数据库
+
+---
+
+## 四、依赖安装
 
 **前端：**
 ```bash
@@ -69,19 +57,56 @@ npm install
 cd backend
 pip install -r requirements.txt
 ```
+如 requirements.txt 不全，建议手动补充安装以下依赖：
+```bash
+pip install uvicorn
+pip install pymysql
+pip install bert-score
+pip install rouge-chinese
+pip install jieba
+pip install tiktoken
+pip install requests
+pip install openpyxl
+pip install docx
+pip install python-docx
+pip install pandas
+pip install PyPDF2
+pip install pdfminer.six
+pip install jwt
+pip install tqdm
+pip install python-dotenv
+```
 
 **后端算法层：**
 ```bash
 cd backend_algo
 pip install -r requirements.txt
 ```
+如 requirements.txt 不全，建议手动补充安装以下依赖：
+```bash
+pip install transformers
+pip install torch
+pip install sentence-transformers
+pip install chromadb
+pip install numpy
+```
 
-### 3. 数据库配置
+**其他说明**
+
+若遇到依赖缺失或版本冲突，请根据报错信息补充安装相关包。
+推荐使用 Python 3.12 及以上版本，Node.js 16 及以上版本。
+若需 GPU 加速，请确保已正确安装 CUDA、torch 等相关依赖。
+
+---
+
+### 五、数据库配置
 
 - 启动MySQL，创建名为`test`的数据库。
 - 修改`backend/database.py`中的连接字符串以匹配本地数据库配置。**（重要！）**
 
-### 4. 启动顺序
+---
+
+### 六、启动方法
 
 请严格按照如下顺序启动各部分：
 
@@ -91,13 +116,11 @@ pip install -r requirements.txt
    ```
 2. **后端算法层**
    ```bash
-   cd backend_algo
-   uvicorn main:app --port 8001
+   uvicorn backend_algo.main:app --port 8001
    ```
 3. **后端业务层**
    ```bash
-   cd backend
-   uvicorn main:app --port 8000
+   uvicorn backend.main:app --port 8000
    ```
 4. **前端**
    ```bash
@@ -106,109 +129,67 @@ pip install -r requirements.txt
    ```
 
 （下述内容可供选择）
-**导入测试论文并向量化（仅供测试用）：**
+**导入测试论文并向量化：**
 ```bash
-python backend/insert_test_paper.py
-python backend_algo/vector_import.py
+python backend/insert_test_paper.py # 导入某篇特定论文
+python backend_algo/vector_import.py # 向量化导入的论文
+python backend/batch_import_papers.py # 批量导入papers文件夹中的所有论文（50篇）
 ```
-注：此二函数仅供后端代码的测试与验证，实际使用项目时，直接在前端即可完成论文的导入与向量化。
+注：上述函数仅供后端代码的测试与验证，用户实际使用项目时，直接在前端即可完成论文的导入与向量化。
 
 ---
 
-## 六、我的新增与特色功能说明
+## 七、论文操作与常用功能
 
-### 1. 论文写作助手（WritingAssistant.vue）
+1. 论文上传与删除
+在前端 PaperLibrary 页面点击上传按钮，选择PDF文件即可自动导入论文并向量化。
+删除论文可直接在前端页面点击删除按钮，系统会同步删除数据库和向量库中的记录。
 
-- **功能描述**：用户输入论文总标题和各章节标题/指引，系统通过前后端交互，调用助教提供的AI API，结合数据库检索相关论文内容，自动生成高质量学术文本。
-- **实现方式**：前端收集用户输入，调用后端业务接口，后端业务层调用算法层API，算法层检索向量数据库并生成内容，最终返回前端展示。
-- 具体来说，前端通过 WritingAssistant.vue 收集用户输入的论文总标题、章节标题和指引，点击按钮后调用 GenerateChapterApi（定义于 api.ts），向后端 /api/generate-chapter 接口发送请求。后端业务层（backend/main.py）接收到请求后，先用 search_similar_papers（backend_algo/retrieval.py）检索相关论文，再拼接向量化信息和用户输入，构造最终 prompt。随后，我们就可以通过 HTTP 请求调用算法层 /chat/generate-chapter（backend_algo/main.py），由大模型生成章节内容，最后将结果返回前端并展示在页面。
+2. 论文批量导入与清理（助教调试/测试用）
+批量导入 papers 文件夹下所有论文并向量化： 
+```bash
+python batch_import_papers.py
+```
+向量化所有已存在论文（如有新论文手动导入后需补充向量化）： 
+```bash
+python vector_import.py
+```
+删除所有论文（数据库与向量库）： 
+```bash
+python clear_all_papers.py
+```
+删除向量库中“僵尸”论文（数据库已删但向量库未删的）： 
+```bash
+python -m backend_algo.clean_chroma_orphan_vectors
+```
+检查当前向量数据库中存在的所有论文：
+```bash
+python -m backend_algo.check_vector_db
+```
 
-### 2. 分章节生成与章节管理
+3. 论文内容生成与批量问答
+在 WritingAssistant 页面输入论文总标题、章节标题与内容要求，点击生成即可获得AI写作内容。
+在 BatchQA 页面可批量编辑问题、参考编号，点击“一键批量回答”即可批量生成所有章节内容。
+支持单题测试弹窗，便于助教现场输入自定义章节进行测试。
 
-- **功能描述**：支持最多5个章节，用户可动态添加/删除章节，每章可单独设置生成指引和内容。
-- **实现方式**：前端用响应式数组管理章节，提供添加/删除按钮，生成内容时逐章调用API，内容实时保存。
-- 具体来说，前端在 WritingAssistant.vue 中用响应式数组 chapters 管理所有章节，用户可通过“添加章节”按钮动态增加章节（这里最多只允许5个，当然可以，随时修改为更多），每章有独立的标题、指引和内容输入框。每个章节的“生成内容”按钮会调用 generateChapterContent 方法，单独向后端请求生成内容。章节的添加、删除、内容编辑等操作均通过 Vue 的响应式机制实时更新，最后，自动保存到 localStorage。
-
-### 3. 一小时免密登录
-
-- **功能描述**：登录后可选择一小时内免密自动登录，提升体验且安全。
-- **实现方式**：登录成功后将JWT Token和时间戳存入localStorage，进入页面时自动校验有效期。主动登出则需重新登录，直接关闭网页后可自动进入主页。token 的加入避免了直接保存用户账号、密码的危险可能，非常安全。（感谢室友在此处的提醒，否则就要巨大风险了）
-- 具体来说，登录表单组件（frontend/src/components/LoginForm.vue）在用户登录成功后，将用户名、token、时间戳等信息存入 localStorage（键名为 loginInfo），并在勾选“1小时免密登录”时生效。每次进入系统时，frontend/src/main.ts 会自动检测 localStorage 中的 token 是否在有效期内且未手动登出，若满足条件则自动填充用户信息并跳转主页。登出时（frontend/src/components/Header.vue），会将 manualLogout 标记为 true，确保下次访问需重新登录。
-
-### 4. 论文库展示与管理（PaperLibrary.vue）
-
-- **功能描述**：展示当前论文库，支持上传本地PDF论文，自动解析并展示来源、摘要，支持前端直接删除。
-- **实现方式**：前端文件上传，后端解析PDF并存入数据库及向量库，前端通过API获取论文列表并渲染，支持删除操作。
-- 具体来说，前端 PaperLibrary.vue 提供上传按钮，用户选择PDF后通过 fetch API 发送带有token的POST请求到 /api/papers/upload，后端业务层（backend/main.py）解析PDF内容，提取标题、作者、摘要，并存入数据库。上传后自动触发向量化线程，将论文内容写入Chroma向量数据库。前端通过 GetPapersList API 获取论文列表，渲染为表格，支持一键删除（调用 DeletePaper API），所有操作都有友好提示。
-
-### 5. 写作助手自动保存与恢复
-
-- **功能描述**：写作内容和历史聊天记录自动保存到本地，除非用户点击“一键清空”，否则内容始终保留。
-- **实现方式**：前端用watch监听数据变化，实时存储到localStorage，onMounted时自动恢复。
-- 具体来说，在 WritingAssistant.vue 中，使用 Vue 的 watch 深度监听 mainTitle 和 chapters 的变化，每次变动时自动调用 saveToLocalStorage 方法，将当前写作状态序列化存储到 localStorage。组件挂载时（onMounted），自动调用 loadFromLocalStorage 恢复上次写作内容。点击“一键清空”按钮会弹出确认框，确认后清除 localStorage 并重置页面数据，这可以确保数据安全，且用户体验良好。
-
-### 6. “不满意？重新生成”
-
-- **功能描述**：对任意章节内容不满意时，可一键重新生成，并可修改生成要求。
-- **实现方式**：每个章节内容区域下方有“重新生成”按钮，点击后会调用 regenerateChapterContent 方法，先清空当前章节内容，再重新调用 generateChapterContent 发送API请求。用户可在重新生成前修改章节指引，生成的新内容会覆盖原有内容。该功能通过前端的事件绑定和API交互实现，保证操作便捷且响应及时。
-
-### 7. 导出Word和Markdown文档
-
-- **功能描述**：支持将AI生成内容导出为Markdown和Word格式，便于后续编辑与分享。
-- **实现方式**：前端集成`file-saver`和`docx`库（见 package.json 和 document-formatter.ts），点击“导出”按钮时，分别调用 generateMarkdownDocument 和 generateWordDocument 方法，将所有章节内容拼接为Markdown或Word格式。由于所用的API的AI导出格式默认为Markdown，因此Markdown可以直接导出；但对于Word，需要额外处理。具体来说，编写了一个函数来专门将Markdown内容解析为段落、标题等格式，自动处理粗体、字号等样式，如此就能得到一个 .docx 文件供用户下载。
-
-### 8. 前端美化与品牌设计
-
-- **功能描述**：整体风格清新明快，圆角、按钮等样式统一，覆盖element-plus默认样式，加入寝室自制trademark图标和宣传语“探索无限可能，体验智能论文写作新纪元！”，等等。
-- **实现方式**：前端大量使用自定义CSS和Element Plus组件，统一圆角、阴影、配色等风格（如 .content-card、.welcome-card、.chapter-box 等类）。通过 :deep 选择器（如 :deep(.el-card__header)）覆盖Element Plus默认样式，实现更符合品牌的UI效果。品牌图标（trademark.jpg）在首页、登录、注册、写作助手等页面均有展示，并配合宣传语“探索无限可能，体验智能论文写作新纪元！”。背景图、渐变色、按钮样式则均在各页面的 style scoped 中详细定制。
+4. 评测与导出
+批量生成后可点击“显示评测结果”自动评测AI内容与标准答案的BERTScore、ROUGE等指标。
+支持一键导出评测结果为CSV，支持导出AI生成内容为Word/Markdown文档。
 
 ---
 
-## 七、界面展示
+## 八、其他说明
 
-- ![论文写作助手界面1](./screenshots/writing_assistant1.png)  
-  *论文写作助手主界面*
-
-- ![论文写作助手界面2](./screenshots/writing_assistant2.png)  
-  *论文写作助手主界面*
-
-
-- ![论文库界面](./screenshots/paper_library.png)  
-  *论文库管理界面*
-
-
-- ![主页美化](./screenshots/index.png)  
-  *首页美化与品牌展示*
-
-
-- ![导出功能](./screenshots/export.png)  
-  *导出Word/Markdown功能界面*
-
-
-- ![便捷上传](./screenshots/upload.png)  
-  *用户可便捷实现上传*
-
-- ![便捷下载](./screenshots/download.png)  
-  *用户可便捷实现下载*
-
-
-- ![广告功能](./screenshots/advertisement.png)  
-  *后续可广告商业化，目前采用剪辑后复旦大学宣传视频*
-
----
-
-## 八、注意事项
-
-1. 各部分启动顺序不可颠倒，建议严格按“指令.txt”操作。
-2. 需保证MySQL和Chroma数据库均已启动。
-3. 首次使用请先注册账号。
-4. 论文库和写作内容均可自动保存，建议定期导出备份。
+1. 本项目的算法实现、创新点与详细功能介绍请参见随包提交的报告文档。
+2. 各部分启动顺序不可颠倒，建议严格按“指令.txt”操作。
+3. 论文库和写作内容均可自动保存，建议定期导出备份。
+4. 若需清空所有论文或向量库内容，建议先备份数据。
 
 ---
 
 ## 九、开发者与致谢
 
-本项目由“34-3021寝室”集团有限公司中的郭诣丰开发，作为数据库引论课程项目。  
+本项目由“34-3021寝室”集团有限公司中的郭诣丰开发，作为数据库引论课程项目。
 感谢老师、二位助教与开源社区（34-3021寝室）的支持。
 欲商业化项目，请先给分满分，随后联系电话19945700324（郭诣丰）。
 
